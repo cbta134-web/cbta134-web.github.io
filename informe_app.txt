@@ -1,0 +1,138 @@
+INFORME COMPLETO DEL SITIO CBTA 134 (Basado en App.jsx y componentes conectados)
+
+Fecha: 17 de enero de 2026
+
+0) TECNOLOGÍAS Y SERVICIOS CLAVE
+- Frontend: React + Vite (SPA con rutas internas y vistas por estado).
+- Backend/DB: Supabase (Postgres + Auth + Storage + RPC).
+  - El cliente usa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.
+- IA: integra APIs de Groq y Gemini para el chatbot.
+  - El proveedor y modelo se configuran en BD (chatbot_config).
+  - Soporta fallback entre proveedores y base_url personalizado.
+
+1) NÚCLEO Y NAVEGACIÓN
+- App: ruteo principal, control de vistas internas y modo claro.
+  - Rutas: /, /creditos, /alumnos, /maestros, /maestros/admin, /chatbot.
+  - Vistas internas por estado (currentView): acerca, carreras, galeria, admission, clubs, contacto, baetam, etc.
+  - Carga tarjetas de inicio desde BD: home_options (fallback local).
+  - Fuerza modo claro y guarda flags en localStorage.
+
+2) COMPONENTES BASE (UI GENERAL)
+- Header: logo/título y enlaces del menú.
+  - BD: ui_header_config, ui_header_links.
+- HeroSection: carrusel de imágenes.
+  - BD: hero_slides.
+- Footer: información institucional, legales y redes.
+  - BD: ui_footer_config, ui_footer_links.
+- Chatbot (burbuja flotante): asistente IA con historial local.
+  - BD: chatbot_config, chatbot_questions.
+  - RPC: get_chatbot_context (contexto del sitio en JSON).
+  - Almacena estado local en IndexedDB y localStorage.
+- ChatbotFull: vista completa del chatbot.
+  - BD: chatbot_config, chatbot_questions.
+  - Mismo motor de IA (Groq/Gemini).
+
+3) SECCIONES DEL HOME (VISTAS INTERNAS)
+- AcercaDeCBTa134:
+  - BD: about_config, about_values (historia, misión, visión, valores, logo, croquis).
+- ValoresInstitucionales:
+  - Contenido estático (sin BD).
+- Noticias:
+  - Iframe de Facebook, contenido fijo (sin BD).
+- AdmissionProcess:
+  - BD: admission_config, admission_dates, admission_requirements,
+        admission_specialties, admission_contact.
+  - Cuenta regresiva dinámica con fecha configurada.
+- SAETAMComponent:
+  - Contenido fijo (sin BD).
+- BAETAM:
+  - BD: baetam_config, baetam_info_cards, baetam_requirements,
+        baetam_advantages, baetam_contact_lines.
+  - Cuenta regresiva para inscripciones.
+- Nosotros:
+  - Contenido fijo (sin BD).
+- Galeria (Cbta/Galeria):
+  - BD: gallery_items (fallback local con secciones instalaciones/actividades/etc.).
+- Clubs:
+  - BD: clubs (categorización: Deportivo, Cultural, Académico).
+- Programas (Carreras):
+  - BD: carreras_tecnicas (listado, detalle, PDF, imagen).
+- Contacto:
+  - BD: contact_main, contact_directory, contact_social,
+        contact_location, contact_faq, contact_cta.
+- Creditos:
+  - BD: credits_config, credits_authors.
+
+4) PORTALES (DOCENTES Y ALUMNOS)
+- Portal Alumnos:
+  - Login con Google (Supabase Auth).
+  - Control de acceso por dominio en BD: access_config.
+  - Perfil y datos personales en BD: profiles.
+  - Carreras en BD: carreras_tecnicas.
+  - Calificaciones en BD: calificaciones.
+  - Avisos globales en BD: publicaciones_globales.
+  - Funciones: registro de perfil, edición de datos, tablero de avisos,
+    consulta de calificaciones por semestre.
+- Portal Docente (Maestros):
+  - Acceso a recursos externos (links estáticos) y botón al panel admin.
+- Panel Docente/Admin (MaestrosAdmin):
+  - Gestión integral del contenido y operación del sitio.
+  - Secciones de administración: usuarios, accesos, avisos, calificaciones,
+    carreras, clubs, admisión, BAETAM, contacto, acerca, galería, home,
+    header/footer, créditos, chatbot y modelos IA.
+  - Soporta cargas a Storage y actualización de rutas públicas.
+
+5) DETALLE DE GESTIÓN EN PANEL DOCENTE (ADMIN)
+- Acceso y permisos:
+  - access_config, edupanel_allowed_accounts, profiles.
+- Avisos globales (tablero alumnos):
+  - publicaciones_globales + storage en posts_media.
+- Calificaciones y alumnos:
+  - calificaciones, profiles.
+- Carreras y clubs:
+  - carreras_tecnicas, clubs, clubs_media.
+- Admisión:
+  - admission_config, admission_dates, admission_requirements,
+    admission_specialties, admission_contact.
+- BAETAM:
+  - baetam_config, baetam_info_cards, baetam_requirements,
+    baetam_advantages, baetam_contact_lines.
+- Contacto:
+  - contact_main, contact_directory, contact_social,
+    contact_location, contact_faq, contact_cta.
+- Acerca:
+  - about_config, about_values, about_media.
+- Galería:
+  - gallery_items, gallery_media.
+- Interfaz principal:
+  - ui_header_config, ui_header_links, ui_footer_config,
+    ui_footer_links, hero_slides, home_options, ui_media.
+- Créditos:
+  - credits_config, credits_authors, credits_media.
+- Chatbot e IA:
+  - chatbot_config, ai_models, chatbot_questions.
+
+6) SUPABASE: RESUMEN DE USO
+- Auth:
+  - Login Google en portal alumnos y panel docente.
+- DB (Postgres):
+  - Todas las tablas listadas arriba controlan contenido y operación.
+- Storage:
+  - posts_media, ui_media, about_media, gallery_media, credits_media.
+- RPC:
+  - get_chatbot_context (contexto para IA).
+
+7) IA Y PROVEEDORES (GROQ + GEMINI)
+- El chatbot puede usar Groq o Gemini según la configuración en BD.
+- Soporta:
+  - modelo configurable,
+  - base_url personalizada,
+  - API keys por proveedor,
+  - fallback automático si falla el proveedor principal,
+  - contexto dinámico desde la BD.
+
+8) COMPONENTES IMPORTADOS PERO NO USADOS EN RENDER ACTUAL
+- Gallery (galería local estática).
+- AdmissionCountdown (contador fijo a 2026-04-01).
+
+FIN DEL INFORME

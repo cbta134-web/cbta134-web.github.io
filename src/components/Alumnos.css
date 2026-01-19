@@ -1,0 +1,345 @@
+.alumnos-container {
+  min-height: 100vh;
+  width: 100vw;
+  background: #f8f9fa;
+  padding: 0;
+  margin: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+.alumnos-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.back-button-alumnos {
+  background: white;
+  border: none;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  color: #2d3436;
+}
+
+.back-button-alumnos:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.alumnos-title {
+  font-size: 2rem;
+  color: #2d3436;
+  margin: 0;
+  font-weight: 800;
+}
+
+.alumnos-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.login-card-premium {
+  display: flex;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-visual-new {
+  flex: 1.2;
+  position: relative;
+  overflow: hidden;
+  min-height: 400px;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.8s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.login-card-premium:hover .login-visual-new {
+  transform: scale(1.02);
+}
+
+
+.overlay-green {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(39, 174, 96, 0.4) 0%, rgba(46, 204, 113, 0.1) 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.overlay-green::after {
+  content: '';
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  top: -25%;
+  left: -25%;
+  animation: pulse 4s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.login-details {
+  flex: 1.2;
+  padding: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.login-details h2 {
+  font-size: 2.2rem;
+  margin-bottom: 1rem;
+  color: #2d3436;
+}
+
+.login-details p {
+  color: #636e72;
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+
+.google-login-btn {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #dfe6e9;
+  border-radius: 12px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3436;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+.google-login-btn:hover {
+  background: #f8f9fa;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.google-login-btn img {
+  width: 24px;
+  height: 24px;
+}
+
+.google-login-btn.logout-btn {
+  background: #fdfdfd;
+  color: #e74c3c;
+  border-color: #f7bbbb;
+}
+
+.google-login-btn.logout-btn:hover {
+  background: #fff5f5;
+  border-color: #e74c3c;
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.1);
+}
+
+.login-footer {
+  margin-top: 3rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.login-footer a {
+  color: #27ae60;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsivo para móviles */
+@media (max-width: 768px) {
+  .login-card-premium {
+    flex-direction: column;
+  }
+
+  .login-visual {
+    padding: 2rem;
+  }
+
+  .login-details {
+    padding: 2rem;
+  }
+
+  .alumnos-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .alumnos-title {
+    font-size: 1.5rem;
+  }
+}
+.registration-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.registration-form input, .registration-form select {
+  padding: 0.8rem;
+  border: 1px solid #dfe6e9;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.profile-info-mini {
+  background: #f1f8f5;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #27ae60;
+}
+
+.profile-info-mini p {
+  margin: 0.3rem 0 !important;
+  color: #2d3436;
+  font-size: 0.95rem;
+}
+
+/* Sección de Dashboard Académico */
+.student-dashboard {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dashboard-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  border: 1px solid #edf2f7;
+}
+
+.dashboard-section h3 {
+  margin-top: 0;
+  color: #2d3436;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #f1f8f5;
+  padding-bottom: 0.5rem;
+}
+
+/* Tabla de Calificaciones para Alumnos */
+.student-grades-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.student-grades-table th {
+  background: #f8f9fa;
+  color: #636e72;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.8rem;
+  text-align: left;
+}
+
+.student-grades-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid #f1f2f6;
+  color: #2d3436;
+}
+
+.grade-badge {
+  background: #dfe6e9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 30px;
+  display: inline-block;
+  text-align: center;
+}
+
+.grade-badge.excellent { background: #d4edda; color: #155724; } /* 9-10 */
+.grade-badge.good { background: #fff3cd; color: #856404; } /* 7-8 */
+.grade-badge.bad { background: #f8d7da; color: #721c24; } /* < 7 */
+
+/* Tarjetas de Avisos */
+.announcement-card {
+  background: #fff;
+  border-left: 4px solid #0984e3;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.announcement-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2d3436;
+}
+
+.announcement-card .meta-date {
+  font-size: 0.8rem;
+  color: #b2bec3;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.announcement-card p {
+  color: #636e72;
+  margin: 0;
+  line-height: 1.5;
+}

@@ -1,0 +1,408 @@
+/* Estilos para el modo noche - Paleta elegante y profesional */
+body.dark-mode {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .app {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode header {
+  background: linear-gradient(135deg, #1e293b, #334155, #475569);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.dark-mode .header {
+  background: linear-gradient(135deg, #1e293b, #334155, #475569) !important;
+  color: #ffffff;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.dark-mode .button {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.dark-mode .active-component {
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  color: #f1f5f9;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.dark-mode .main-content {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+  color: #f1f5f9;
+}
+
+.dark-mode .option-card {
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: #ffffff !important;
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+}
+
+.dark-mode .option-card:hover {
+  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.2);
+  transform: translateY(-4px);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #334155, #475569) !important;
+}
+
+.dark-mode .navigation-title {
+  color: #f1f5f9 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .option-title {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.dark-mode .option-description {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode .option-button {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  border: none;
+  font-weight: 500;
+}
+
+.dark-mode .option-button:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.dark-mode footer {
+  background: linear-gradient(135deg, #1e293b, #334155, #475569);
+  color: #ffffff;
+  border-top: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.dark-mode .theme-toggle {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  font-weight: 500;
+}
+
+.dark-mode .theme-toggle:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Estilos del Chatbot en modo noche - Elegante y profesional */
+.dark-mode .chatbot-container {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.dark-mode .chatbot-bubble {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .chatbot-bubble:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.dark-mode .chatbot-label {
+  color: #ef4444 !important; /* Rojo elegante */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.dark-mode .chatbot-window {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+}
+
+.dark-mode .chatbot-header {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .chatbot-messages {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
+.dark-mode .message.user {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+}
+
+.dark-mode .message.bot {
+  background: linear-gradient(135deg, #334155, #475569);
+  color: #f1f5f9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .chatbot-input {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.dark-mode .chatbot-input input {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #f1f5f9;
+  border-radius: 8px;
+}
+
+.dark-mode .chatbot-input input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  outline: none;
+}
+
+.dark-mode .chatbot-input button {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.dark-mode .chatbot-input button:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+}
+
+/* Estilos para Noticias en modo noche - Elegante y profesional */
+.dark-mode .noticias-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  padding: 0 10px;
+}
+
+.dark-mode .noticias-card {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  max-width: none;
+  width: 100%;
+}
+
+/* Responsividad general para noticias en modo noche */
+@media (max-width: 768px) {
+  .dark-mode .noticias-container {
+    padding: 0 5px;
+  }
+  
+  .dark-mode .noticias-card {
+    padding: 15px;
+    border-radius: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dark-mode .noticias-container {
+    padding: 0;
+  }
+  
+  .dark-mode .noticias-card {
+    padding: 10px;
+    border-radius: 10px;
+  }
+}
+
+/* Estilos para iframe de Facebook en modo noche */
+.dark-mode .facebook-info {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #3b82f6;
+  border-left-color: #3b82f6;
+}
+
+.dark-mode .facebook-container {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.dark-mode .facebook-container iframe {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+.dark-mode .facebook-note {
+  color: #cbd5e1;
+}
+
+/* Responsividad completa para iframe de Facebook en modo noche */
+@media (max-width: 1200px) {
+  .dark-mode .facebook-container iframe {
+    height: 65vh !important;
+    max-width: 550px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .dark-mode .facebook-container {
+    padding: 8px !important;
+    margin: 0 auto 20px auto !important;
+    border-radius: 5px !important;
+  }
+  
+  .dark-mode .facebook-container iframe {
+    height: 60vh !important;
+    min-height: 400px !important;
+    border-radius: 5px !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dark-mode .facebook-container {
+    padding: 5px !important;
+    margin: 0 auto 20px auto !important;
+  }
+  
+  .dark-mode .facebook-container iframe {
+    height: 55vh !important;
+    min-height: 350px !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .dark-mode .facebook-container iframe {
+    height: 50vh !important;
+    min-height: 300px !important;
+  }
+}
+
+/* Estilos para Inicio en modo noche - Elegante y profesional */
+.dark-mode .inicio-page {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+}
+
+.dark-mode .inicio-hero {
+  background: linear-gradient(135deg, #1e293b, #334155, #475569);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Estilos adicionales para forzar modo oscuro elegante */
+.dark-mode .navigation-cards {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+}
+
+.dark-mode .app-content {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+}
+
+.dark-mode .section {
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode h5, .dark-mode h6 {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode p {
+  color: #cbd5e1 !important;
+}
+
+/* Efectos elegantes para interactividad */
+.dark-mode .option-card {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.dark-mode .option-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.dark-mode .option-card:hover::before {
+  left: 100%;
+}
+
+/* Scrollbar personalizada para modo oscuro */
+.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+
+/* Overrides globales para elementos que todavía usan inline styles con fondo blanco.
+   Esto corrige rápidamente "cuadritos" blancos en modo oscuro sin modificar todos los componentes.
+*/
+body.dark-mode [style*="background: white"] {
+  background: rgba(255,255,255,0.03) !important;
+  color: #dbe9ff !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+  border: 1px solid rgba(255,255,255,0.03) !important;
+}
+
+/* Elementos que usan rgba(255, 255, 255, x) en inline styles */
+body.dark-mode [style*="rgba(255, 255, 255"] {
+  background: rgba(255,255,255,0.025) !important;
+  color: #dbe9ff !important;
+}
+
+/* Asegurar tarjetas de valores y secciones pequeñas sean oscuras */
+body.dark-mode div[style*="border-radius"][style*="padding"][style*="background"] {
+  background: rgba(255,255,255,0.02) !important;
+}

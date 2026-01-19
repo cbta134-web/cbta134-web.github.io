@@ -1,0 +1,150 @@
+.inicio-page {
+  padding-top: 80px;
+  min-height: 100vh;
+}
+
+.inicio-hero {
+  color: white;
+  padding: 60px 20px;
+  text-align: center;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #003366, #0074d9);
+}
+
+.hero-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  margin-bottom: 30px;
+  opacity: 0.9;
+}
+
+.hero-img {
+  max-width: 200px;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-facebook {
+  display: inline-block;
+  background: #1877f2;
+  color: white;
+  padding: 12px 25px;
+  text-decoration: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.btn-facebook:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.inicio-section {
+  padding: 40px 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.carrusel {
+  display: flex;
+  overflow-x: auto;
+  gap: 20px;
+  padding: 10px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+}
+
+.carrusel-item {
+  min-width: 280px;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.carrusel-item h3 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.carrusel-item p {
+  color: #666;
+  font-size: 14px;
+}
+
+.carrusel-img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.info-box {
+  background: white;
+  border-radius: 10px;
+  padding: 30px 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  line-height: 1.6;
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  max-width: 150px;
+  border-radius: 10px;
+  height: auto;
+}
+
+.center-text {
+  text-align: center;
+  color: #333;
+}
+
+.mapa {
+  margin-top: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Modo oscuro */
+.dark-mode .inicio-hero {
+  background: linear-gradient(135deg, #0a0a0a, #222);
+  color: #fff;
+}
+
+.dark-mode .info-box,
+.dark-mode .carrusel-item {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  color: #ddd;
+}

@@ -1,0 +1,533 @@
+.admin-container {
+    min-height: 100vh;
+    background: #f0f2f5;
+    padding: 2rem;
+    font-family: 'Inter', sans-serif;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #1a365d;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.students-section,
+.post-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.students-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.student-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #edf2f7;
+    transition: background 0.2s;
+}
+
+.student-card:hover {
+    background: #f8fafc;
+}
+
+.student-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.student-info p {
+    margin: 0.2rem 0;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.student-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.student-actions button:hover {
+    background: #e2e8f0;
+}
+
+.post-section form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.post-section input,
+.post-section textarea {
+    padding: 0.8rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+}
+
+.post-section textarea {
+    height: 150px;
+    resize: none;
+}
+
+.post-section button {
+    background: #1a365d;
+    color: white;
+    border: none;
+    padding: 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #f0f2f5;
+}
+
+.admin-login-container .login-card-premium {
+    padding: 3rem;
+    text-align: center;
+    max-width: 400px;
+}
+
+.google-login-btn {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #dfe6e9;
+    border-radius: 12px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2d3436;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.google-login-btn:hover {
+    background: #f8f9fa;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.google-login-btn img {
+    width: 24px;
+}
+
+/* Modal Edición Calificaciones */
+.grades-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.grades-modal {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.grades-header-modal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f2f5;
+}
+
+.grade-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.grades-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.grades-table th,
+.grades-table td {
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.grades-table th {
+    background: #f8f9fa;
+    color: #1a365d;
+    font-weight: 600;
+}
+
+.grade-input {
+    width: 60px;
+    padding: 0.4rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.grade-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.new-subject-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    align-items: center;
+}
+
+/* Mejoras visuales para el form de nueva materia */
+.new-subject-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #f1f8f5;
+    border-radius: 12px;
+    margin-top: 2rem;
+    border: 1px solid #c3e6cb;
+}
+
+.new-subject-form h4 {
+    margin: 0;
+    color: #155724;
+}
+
+.new-subject-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.new-subject-inputs input[type="text"] {
+    flex: 2;
+    padding: 0.6rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    min-width: 200px;
+}
+
+.partial-inputs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.partial-inputs input {
+    width: 60px;
+    padding: 0.6rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.add-subject-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.add-subject-btn:hover {
+    background: #219150;
+}
+
+.modal-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 2px solid #f0f2f5;
+    padding-top: 1.5rem;
+}
+
+.save-modal-btn {
+    background: #0984e3;
+    color: white;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 6px rgba(9, 132, 227, 0.2);
+    transition: all 0.3s;
+}
+
+.save-modal-btn:hover {
+    background: #076cab;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px rgba(9, 132, 227, 0.3);
+}
+
+/* Navegación Jerárquica */
+.admin-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    color: #636e72;
+}
+
+.breadcrumb-item {
+    cursor: pointer;
+    color: #0984e3;
+    font-weight: 500;
+}
+
+.breadcrumb-item:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: #b2bec3;
+}
+
+.current-level {
+    color: #2d3436;
+    font-weight: 600;
+}
+
+/* Grids de Selección */
+.levels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.level-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 2px solid transparent;
+}
+
+.level-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    border-color: #0984e3;
+    background: #f8fbff;
+}
+
+.level-number {
+    font-size: 4rem;
+    font-weight: 800;
+    color: #0984e3;
+    display: block;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+}
+
+.level-label {
+    font-size: 1.2rem;
+    color: #636e72;
+    font-weight: 500;
+}
+
+/* Tarjetas de Grupo */
+.group-card {
+    background: #fff;
+    border-left: 6px solid #27ae60;
+}
+
+.group-letter {
+    font-size: 3.5rem;
+    color: #27ae60;
+}
+
+/* Tabla de Alumnos (Reemplaza Cards anteriores) */
+.students-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.admin-students-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-students-table th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    color: #636e72;
+    font-weight: 600;
+}
+
+.admin-students-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #edf2f7;
+    color: #2d3436;
+}
+
+.admin-students-table tr:hover {
+    background: #f8fbff;
+}
+
+.action-btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.4rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.action-btn-icon:hover {
+    background: #dfe6e9;
+}
+
+/* Estilos para Gestión de Posts */
+.posts-list-admin {
+    margin-top: 2rem;
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+}
+
+.admin-post-card {
+    background: #fff;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.post-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+}
+
+.post-content p {
+    margin: 0 0 0.5rem 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.post-content small {
+    color: #bdc3c7;
+    font-size: 0.8rem;
+}
+
+.delete-post-btn {
+    background: #fab1a0;
+    color: #d63031;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.delete-post-btn:hover {
+    background: #ff7675;
+    color: white;
+}
+
+/* Modal de Edición de Perfil */
+.edit-profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.edit-profile-form label {
+    font-weight: 600;
+    color: #2d3436;
+    margin-bottom: -0.5rem;
+}
+
+.edit-profile-form input {
+    padding: 0.8rem;
+    border: 1px solid #dfe6e9;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.edit-post-btn {
+    background: #74b9ff;
+    color: #0984e3;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.edit-post-btn:hover {
+    background: #0984e3;
+    color: white;
+}
