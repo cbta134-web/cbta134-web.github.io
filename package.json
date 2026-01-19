@@ -1,9 +1,9 @@
 {
-  "name": "cbta134-pagina-web",
+  "name": "cbta134-web.github.io",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://cbta134-web.github.io/cbta134-pagina-web",
+  "homepage": "https://cbta134-web.github.io/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
