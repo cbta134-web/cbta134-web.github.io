@@ -1,0 +1,565 @@
+/* ===================================================
+   PRE-REGISTRO LANDING – Estilos Premium
+   CBTa 134 · Nuevo Ingreso
+=================================================== */
+
+.prl-page {
+    --green-institutional: #046638;
+    --green-dark: #034d2a;
+    --green-light: #e6f5eb;
+    --gold: #d4af37;
+    --gold-light: #fdf6e3;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --bg-soft: #f8fafc;
+    --white: #ffffff;
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--white);
+    color: var(--text-main);
+    overflow-x: hidden;
+}
+
+/* ── Hero Section ──────────────────────────────── */
+.prl-hero {
+    position: relative;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8rem 2rem 4rem;
+    background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-institutional) 100%);
+    color: var(--white);
+    text-align: center;
+    overflow: hidden;
+}
+
+.prl-hero__bg {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 40px 40px;
+}
+
+.prl-hero__particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.prl-particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    animation: float 20s infinite linear;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.prl-hero__content {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+}
+
+.prl-badge {
+    display: inline-block;
+    background: var(--gold);
+    color: #1a1a1a;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.prl-hero__title {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.025em;
+}
+
+.prl-hero__highlight {
+    color: var(--gold);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.prl-hero__sub {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 700px;
+    margin: 0 auto 3rem;
+    line-height: 1.6;
+}
+
+/* ── CTA Button ────────────────────────────────── */
+.prl-cta {
+    display: inline-flex;
+    align-items: center;
+    background: var(--white);
+    color: var(--green-institutional);
+    padding: 1rem 2rem;
+    border-radius: 1rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    box-shadow: var(--shadow-lg);
+    gap: 1.5rem;
+}
+
+.prl-cta:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+    background: var(--gold-light);
+}
+
+.prl-cta__icon {
+    font-size: 2.5rem;
+}
+
+.prl-cta__text {
+    display: flex;
+    flex-direction: column;
+}
+
+.prl-cta__text strong {
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.prl-cta__text small {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.prl-cta__arrow {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* ── Main Card (El que el usuario quiere que resalte) ── */
+.prl-main-card-section {
+    padding: 4rem 2rem;
+    margin-top: -6rem;
+    position: relative;
+    z-index: 20;
+}
+
+.prl-main-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--white);
+    border-radius: 2rem;
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 900px) {
+    .prl-main-card {
+        grid-template-columns: 1fr;
+    }
+
+    .prl-main-card__right {
+        display: none;
+    }
+}
+
+.prl-main-card__left {
+    padding: 4rem;
+}
+
+.prl-main-card__icon-wrap {
+    width: 4rem;
+    height: 4rem;
+    background: var(--green-light);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.prl-main-card__big-icon {
+    font-size: 2rem;
+}
+
+.prl-main-card__title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    color: var(--green-institutional);
+}
+
+.prl-main-card__desc {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+}
+
+.prl-main-card__list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .prl-main-card__list {
+        grid-template-columns: 1fr;
+    }
+}
+
+.prl-main-card__list li {
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.prl-main-card__btn {
+    background: var(--green-institutional);
+    color: var(--white);
+    border: none;
+    padding: 1.25rem 2.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 1.125rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.prl-main-card__btn:hover {
+    background: var(--green-dark);
+    transform: scale(1.02);
+}
+
+.prl-main-card__right {
+    background: linear-gradient(45deg, #f1f5f9 0%, #e2e8f0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+}
+
+/* ── Ficha Preview ──────────────────────────────── */
+.prl-ficha-preview {
+    background: var(--white);
+    width: 100%;
+    max-width: 300px;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transform: rotate(3deg);
+}
+
+.prl-ficha-preview__header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--green-light);
+    padding-bottom: 1rem;
+}
+
+.prl-ficha-preview__logo {
+    background: var(--green-institutional);
+    color: var(--white);
+    font-size: 0.6rem;
+    font-weight: 900;
+    padding: 0.4rem;
+    text-align: center;
+}
+
+.prl-ficha-preview__school {
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.prl-ficha-preview__subtitle {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.prl-ficha-preview__folio {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+    color: var(--green-institutional);
+    text-align: center;
+    background: var(--green-light);
+    padding: 0.25rem;
+}
+
+.prl-ficha-preview__row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.prl-ficha-preview__bar {
+    flex: 1;
+    height: 8px;
+    background: #f1f5f9;
+    margin-left: 0.5rem;
+}
+
+.prl-ficha-preview__sello {
+    margin-top: 2rem;
+    border: 2px dashed var(--green-light);
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--green-institutional);
+    font-weight: 800;
+    opacity: 0.5;
+}
+
+/* ── Countdown ─────────────────────────────────── */
+.prl-countdown {
+    margin-top: 3rem;
+}
+
+.prl-countdown__label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    margin-bottom: 1rem;
+}
+
+.prl-countdown__grid {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.prl-countdown__unit {
+    display: flex;
+    flex-direction: column;
+}
+
+.prl-countdown__num {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+.prl-countdown__lbl {
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+/* ── Steps Section ──────────────────────────────── */
+.prl-steps {
+    padding: 6rem 2rem;
+    background: var(--white);
+}
+
+.prl-section-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.prl-section-header h2 {
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--green-institutional);
+    margin-bottom: 1rem;
+}
+
+.prl-steps__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.prl-step-card {
+    padding: 2.5rem;
+    background: var(--bg-soft);
+    border-radius: 1.5rem;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.prl-step-card:hover {
+    transform: translateY(-10px);
+    background: var(--white);
+    box-shadow: var(--shadow-lg);
+}
+
+.prl-step-card__num {
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--green-institutional);
+    opacity: 0.1;
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+}
+
+.prl-step-card__title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+.prl-step-card__desc {
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+/* ── Carreras Section ───────────────────────────── */
+.prl-carreras {
+    padding: 6rem 2rem;
+    background: var(--bg-soft);
+}
+
+.prl-carreras__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.prl-carrera-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    text-align: center;
+    transition: all 0.3s;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.prl-carrera-card:hover {
+    border-color: var(--green-institutional);
+    transform: translateY(-5px);
+}
+
+.prl-carrera-card__icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.prl-carrera-card__name {
+    font-size: 1.125rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    color: var(--green-institutional);
+}
+
+.prl-carrera-card__desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* ── Requisitos Section ─────────────────────────── */
+.prl-requisitos {
+    padding: 6rem 2rem;
+    background: var(--green-dark);
+    color: var(--white);
+}
+
+.prl-section-header--light h2 {
+    color: var(--white);
+}
+
+.prl-section-header--light p {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.prl-req-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.prl-req-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.prl-req-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.prl-req-item__icon {
+    font-size: 1.5rem;
+}
+
+/* ── CTA Final Section ──────────────────────────── */
+.prl-cta-final {
+    padding: 8rem 2rem;
+    text-align: center;
+    background: var(--white);
+}
+
+.prl-cta-final h2 {
+    font-size: 3.5rem;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    color: var(--green-institutional);
+}
+
+.prl-cta-final p {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    margin-bottom: 3rem;
+}
+
+.prl-cta--lg {
+    padding: 1.5rem 3rem;
+    transform: scale(1.1);
+}
+
+.prl-cta--lg:hover {
+    transform: scale(1.15) translateY(-5px);
+}

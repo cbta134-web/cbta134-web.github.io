@@ -1,0 +1,194 @@
+/* Estilos para el modo día */
+body.light-mode {
+  background-color: #e8f5e8;
+}
+
+.light-mode footer {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: white;
+}
+
+/* Estilos para Noticias en modo día */
+.light-mode .noticias-container {
+  background: #faf7f0;
+  padding: 0 10px;
+}
+
+.light-mode .noticias-card {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2d5016;
+  min-height: 100vh;
+}
+
+.light-mode {
+  background-color: #e8f5e8;
+  color: #2d5016;
+  min-height: 100vh;
+}
+
+.light-mode .app {
+  background-color: #e8f5e8;
+  color: #2d5016;
+}
+
+.light-mode .header {
+  background: linear-gradient(135deg, #4caf50, #388e3c, #2e7d32);
+  color: white;
+}
+
+.light-mode .main-content {
+  background-color: #f1f8e9;
+  color: #2d5016;
+}
+
+.light-mode .option-card {
+  background-color: #f8fff8;
+  border: 1px solid #c8e6c9;
+  box-shadow: 0 2px 8px rgba(76,175,80,0.2);
+}
+
+.light-mode .option-card:hover {
+  box-shadow: 0 4px 15px rgba(76,175,80,0.3);
+}
+
+.light-mode .navigation-cards {
+  background-color: transparent;
+}
+
+.light-mode .navigation-title {
+  color: #2d5016;
+}
+
+.light-mode .option-button {
+  background: linear-gradient(135deg, #66bb6a, #4caf50);
+  color: white;
+}
+
+.light-mode .theme-toggle {
+  background: linear-gradient(135deg, #81c784, #66bb6a);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.light-mode .theme-toggle:hover {
+  background: linear-gradient(135deg, #66bb6a, #4caf50);
+}
+
+.light-mode footer {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: white;
+}
+
+/* Estilos para Noticias en modo día */
+.light-mode .noticias-container {
+  background: #faf7f0;
+  padding: 0 10px;
+}
+
+.light-mode .noticias-card {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2d5016;
+  max-width: none;
+  width: 100%;
+}
+
+/* Responsividad general para noticias */
+@media (max-width: 768px) {
+  .light-mode .noticias-container {
+    padding: 0 5px;
+  }
+  
+  .light-mode .noticias-card {
+    padding: 15px;
+    border-radius: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .light-mode .noticias-container {
+    padding: 0;
+  }
+  
+  .light-mode .noticias-card {
+    padding: 10px;
+    border-radius: 10px;
+  }
+}
+
+/* Estilos para iframe de Facebook en modo día */
+.light-mode .facebook-info {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  color: #1565c0;
+}
+
+.light-mode .facebook-container {
+  background: rgba(255, 255, 255, 0.95);
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.light-mode .facebook-container iframe {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+.light-mode .facebook-note {
+  color: #666;
+}
+
+/* Responsividad completa para iframe de Facebook en modo día */
+@media (max-width: 1200px) {
+  .light-mode .facebook-container iframe {
+    height: 65vh !important;
+    max-width: 550px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .light-mode .facebook-container {
+    padding: 8px !important;
+    margin: 0 auto 20px auto !important;
+    border-radius: 5px !important;
+  }
+  
+  .light-mode .facebook-container iframe {
+    height: 60vh !important;
+    min-height: 400px !important;
+    border-radius: 5px !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .light-mode .facebook-container {
+    padding: 5px !important;
+    margin: 0 auto 20px auto !important;
+  }
+  
+  .light-mode .facebook-container iframe {
+    height: 55vh !important;
+    min-height: 350px !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .light-mode .facebook-container iframe {
+    height: 50vh !important;
+    min-height: 300px !important;
+  }
+}
+
+/* Estilos para Inicio en modo día */
+.light-mode .inicio-page {
+  background-color: #f8f9fa;
+}
+
+.light-mode .inicio-hero {
+  background: linear-gradient(135deg, #28a745, #20c997);
+}

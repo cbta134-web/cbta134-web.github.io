@@ -1,0 +1,441 @@
+/* ===================================================
+   PRE-REGISTRO – Estilos
+   CBTa 134 · Nuevo Ingreso
+=================================================== */
+
+/* ── Variables ─────────────────────────────────── */
+:root {
+  --pr-verde:       #046638;
+  --pr-verde-dark:  #034d2a;
+  --pr-verde-light: #e6f5eb;
+  --pr-oro:         #d4af37;
+  --pr-bg:          #f4f7f4;
+  --pr-white:       #ffffff;
+  --pr-text:        #1e1e1e;
+  --pr-muted:       #6b7280;
+  --pr-border:      #d1d5db;
+  --pr-error:       #dc2626;
+  --pr-success:     #16a34a;
+  --pr-radius:      12px;
+  --pr-shadow:      0 4px 24px rgba(4,102,56,.12);
+}
+
+/* ── Wrapper principal ──────────────────────────── */
+.prereg-wrapper {
+  min-height: 100vh;
+  background: var(--pr-bg);
+  padding-bottom: 3rem;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Hero ───────────────────────────────────────── */
+.prereg-hero {
+  background: linear-gradient(135deg, var(--pr-verde-dark) 0%, var(--pr-verde) 60%, #0a7a44 100%);
+  padding: 3rem 1.5rem 2.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.prereg-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+  pointer-events: none;
+}
+
+.prereg-hero__content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+
+.prereg-hero__badge {
+  display: inline-block;
+  background: var(--pr-oro);
+  color: #1a0a00;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .3rem .9rem;
+  border-radius: 999px;
+  margin-bottom: .9rem;
+}
+
+.prereg-hero__title {
+  color: #fff;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+  margin: 0 0 .6rem;
+  line-height: 1.2;
+}
+
+.prereg-hero__subtitle {
+  color: rgba(255,255,255,.8);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* ── Stepper ───────────────────────────────────── */
+.prereg-stepper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1.5rem 1rem .5rem;
+  max-width: 900px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+.prereg-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  min-width: 90px;
+  position: relative;
+  flex: 1;
+  cursor: default;
+}
+
+.prereg-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 17px;
+  left: calc(50% + 18px);
+  width: calc(100% - 36px);
+  height: 2px;
+  background: var(--pr-border);
+  z-index: 0;
+}
+
+.prereg-step.done:not(:last-child)::after { background: var(--pr-verde); }
+
+.prereg-step__circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--pr-white);
+  border: 2.5px solid var(--pr-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  position: relative;
+  z-index: 1;
+  transition: all .2s;
+}
+
+.prereg-step.active .prereg-step__circle {
+  background: var(--pr-verde);
+  border-color: var(--pr-verde);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(4,102,56,.18);
+}
+
+.prereg-step.done .prereg-step__circle {
+  background: var(--pr-success);
+  border-color: var(--pr-success);
+  color: #fff;
+}
+
+.prereg-step__label {
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--pr-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.prereg-step.active .prereg-step__label { color: var(--pr-verde); }
+.prereg-step.done  .prereg-step__label  { color: var(--pr-success); }
+
+/* ── Contenedor del form ───────────────────────── */
+.prereg-form-container {
+  max-width: 860px;
+  margin: 1.5rem auto 0;
+  padding: 0 1rem;
+}
+
+/* ── Sección ───────────────────────────────────── */
+.prereg-section {
+  background: var(--pr-white);
+  border-radius: var(--pr-radius);
+  padding: 1.8rem 1.8rem 1rem;
+  box-shadow: var(--pr-shadow);
+  border: 1px solid #e5e7eb;
+  margin-bottom: .5rem;
+  animation: fadeUp .3s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.prereg-section__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--pr-verde);
+  margin: 0 0 .4rem;
+  border-bottom: 2px solid var(--pr-verde-light);
+  padding-bottom: .6rem;
+}
+
+.prereg-section__subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pr-verde-dark);
+  margin: 1.4rem 0 .6rem;
+}
+
+.prereg-section__desc {
+  font-size: .9rem;
+  color: var(--pr-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* ── Grids de formulario ───────────────────────── */
+.form-grid { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.form-grid--2 { grid-template-columns: repeat(2, 1fr); }
+.form-grid--3 { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 600px) {
+  .form-grid--2,
+  .form-grid--3 { grid-template-columns: 1fr; }
+}
+
+/* ── Campos ────────────────────────────────────── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin-bottom: .5rem;
+}
+
+.form-label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--pr-text);
+}
+
+.required { color: var(--pr-error); margin-left: .15rem; }
+
+.form-input {
+  width: 100%;
+  padding: .62rem .85rem;
+  border: 1.5px solid var(--pr-border);
+  border-radius: 8px;
+  font-size: .9rem;
+  color: var(--pr-text);
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: var(--pr-verde);
+  box-shadow: 0 0 0 3px rgba(4,102,56,.12);
+}
+
+.form-select { cursor: pointer; }
+.input-error  { border-color: var(--pr-error) !important; }
+
+.field-error {
+  font-size: .75rem;
+  color: var(--pr-error);
+  font-weight: 500;
+}
+
+/* ── Carrera cards ─────────────────────────────── */
+.carrera-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.carrera-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  padding: 1rem .75rem;
+  border: 2px solid var(--pr-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  text-align: center;
+  background: var(--pr-white);
+}
+
+.carrera-card:hover {
+  border-color: var(--pr-verde);
+  background: var(--pr-verde-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(4,102,56,.12);
+}
+
+.carrera-card.selected {
+  border-color: var(--pr-verde);
+  background: var(--pr-verde-light);
+  box-shadow: 0 0 0 3px rgba(4,102,56,.2);
+}
+
+.carrera-card__icon { font-size: 2rem; }
+
+.carrera-card__name {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--pr-verde-dark);
+  line-height: 1.3;
+}
+
+/* ── Tabla de confirmación ─────────────────────── */
+.confirm-table {
+  border: 1px solid var(--pr-border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: .88rem;
+}
+
+.confirm-table__header {
+  background: var(--pr-verde);
+  color: #fff;
+  font-weight: 700;
+  padding: .5rem 1rem;
+  font-size: .8rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.confirm-table__row {
+  display: flex;
+  border-bottom: 1px solid var(--pr-border);
+  transition: background .15s;
+}
+
+.confirm-table__row:last-child { border-bottom: none; }
+.confirm-table__row:hover { background: var(--pr-verde-light); }
+
+.confirm-table__label {
+  width: 42%;
+  min-width: 140px;
+  padding: .5rem 1rem;
+  font-weight: 600;
+  color: var(--pr-muted);
+  background: #f9fafb;
+  border-right: 1px solid var(--pr-border);
+  word-break: break-word;
+}
+
+.confirm-table__value {
+  padding: .5rem 1rem;
+  color: var(--pr-text);
+  word-break: break-all;
+  flex: 1;
+}
+
+/* ── Navegación ────────────────────────────────── */
+.prereg-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.2rem 0 .5rem;
+}
+
+/* ── Botones ───────────────────────────────────── */
+.btn-primary,
+.btn-secondary,
+.btn-success {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .7rem 1.6rem;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--pr-verde);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--pr-verde-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(4,102,56,.3); }
+
+.btn-secondary {
+  background: var(--pr-white);
+  color: var(--pr-verde);
+  border: 2px solid var(--pr-verde);
+}
+.btn-secondary:hover { background: var(--pr-verde-light); }
+
+.btn-success {
+  background: linear-gradient(135deg, var(--pr-verde) 0%, #0a7a44 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(4,102,56,.3);
+}
+.btn-success:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(4,102,56,.4); }
+.btn-success:disabled,
+.btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+
+/* ── Pantalla de éxito ─────────────────────────── */
+.prereg-success {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pr-bg);
+  padding: 2rem 1rem;
+}
+
+.prereg-success__card {
+  background: var(--pr-white);
+  border-radius: var(--pr-radius);
+  padding: 3rem 2.5rem;
+  text-align: center;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--pr-shadow);
+  border-top: 5px solid var(--pr-verde);
+  animation: fadeUp .4s ease;
+}
+
+.prereg-success__icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.prereg-success__card h2 {
+  font-size: 1.6rem;
+  color: var(--pr-verde);
+  margin: 0 0 .5rem;
+}
+
+.prereg-success__folio {
+  font-size: 1.1rem;
+  background: var(--pr-verde-light);
+  display: inline-block;
+  padding: .4rem 1.2rem;
+  border-radius: 999px;
+  color: var(--pr-verde-dark);
+  margin: .5rem 0 1rem;
+  font-family: monospace;
+  letter-spacing: .06em;
+}
+
+.prereg-success__card p {
+  color: var(--pr-muted);
+  margin-bottom: 1.5rem;
+}
+
+.prereg-success__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
