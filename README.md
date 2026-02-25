@@ -9,5 +9,6 @@ Currently, two official plugins are available:
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 =======
 # CBTa-134-PAG
-Pagina del CBta 134
+Pagina del CBta 134 en pruebas :)   utilisa supabase y react + vite jsx
 >>>>>>> f45d59c13ad658efb69cbb02a84f6429bb496f88
+
