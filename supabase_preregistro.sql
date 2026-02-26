@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS preregistros (
   -- Carrera elegida
   carrera_id            BIGINT REFERENCES carreras_tecnicas(id),
   carrera_nombre        TEXT NOT NULL,
+  segunda_opcion_carrera TEXT,          -- 2ª opción de carrera (opcional)
+  tercera_opcion_carrera TEXT,          -- 3ª opción de carrera (opcional)
 
   -- Procedencia escolar
   escuela_tipo          TEXT NOT NULL CHECK (escuela_tipo IN ('Pública','Privada','Indígena','Comunitaria')),
@@ -348,3 +350,14 @@ DROP POLICY IF EXISTS "config_select_public" ON preregistro_config;
 DROP POLICY IF EXISTS "config_update_admin" ON preregistro_config;
 CREATE POLICY "config_select_public" ON preregistro_config FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "config_update_admin" ON preregistro_config FOR UPDATE TO authenticated USING (true);
+
+-- ─── MIGRACIÓN: Agregar columnas de 2ª y 3ª opción de carrera ───
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='preregistros' AND column_name='segunda_opcion_carrera') THEN
+    ALTER TABLE preregistros ADD COLUMN segunda_opcion_carrera TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='preregistros' AND column_name='tercera_opcion_carrera') THEN
+    ALTER TABLE preregistros ADD COLUMN tercera_opcion_carrera TEXT;
+  END IF;
+END $$;

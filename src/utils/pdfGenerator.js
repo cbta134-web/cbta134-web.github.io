@@ -114,11 +114,18 @@ export async function generarFichaPDF(data) {
         ['Código Postal', data.codigo_postal],
     ], y);
 
-    // ── SEC 2: CARRERA ────────────────────────────────────
-    y = seccionHeader('2. CARRERA TÉCNICA SELECCIONADA', y);
-    y = tablaCeldas([
-        ['Carrera', data.carrera_nombre],
-    ], y);
+    // ── SEC 2: CARRERA(S) ──────────────────────────────────
+    y = seccionHeader('2. CARRERAS TÉCNICAS SELECCIONADAS', y);
+    const carreraRows = [
+        ['1ª Opción de Carrera', data.carrera_nombre],
+    ];
+    if (data.segunda_opcion_carrera) {
+        carreraRows.push(['2ª Opción de Carrera', data.segunda_opcion_carrera]);
+    }
+    if (data.tercera_opcion_carrera) {
+        carreraRows.push(['3ª Opción de Carrera', data.tercera_opcion_carrera]);
+    }
+    y = tablaCeldas(carreraRows, y);
 
     // ── SEC 3: ESCUELA ────────────────────────────────────
     y = seccionHeader('3. ESCUELA DE PROCEDENCIA', y);

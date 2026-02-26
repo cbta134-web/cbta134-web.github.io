@@ -40,7 +40,7 @@ const initialAspirante = {
     domicilio: '', colonia: '', municipio: '', codigo_postal: '',
 };
 
-const initialCarrera = { carrera_nombre: '' };
+const initialCarrera = { carrera_nombre: '', segunda_opcion_carrera: '', tercera_opcion_carrera: '' };
 
 const initialEscuela = {
     escuela_tipo: '', escuela_nombre: '', escuela_municipio: '', promedio_general: '',
@@ -243,7 +243,7 @@ export default function PreRegistro({ setCurrentView }) {
                 errs.codigo_postal = '5 dígitos requeridos';
         }
         if (step === 2) {
-            if (!carrera.carrera_nombre) errs.carrera_nombre = 'Selecciona una carrera';
+            if (!carrera.carrera_nombre) errs.carrera_nombre = 'Selecciona tu primera opción de carrera';
         }
         if (step === 3) {
             if (!escuela.escuela_tipo) errs.escuela_tipo = 'Requerido';
@@ -278,7 +278,9 @@ export default function PreRegistro({ setCurrentView }) {
             const payload = {
                 ...aspirante,
                 curp: aspirante.curp.toUpperCase(),
-                ...carrera,
+                carrera_nombre: carrera.carrera_nombre,
+                segunda_opcion_carrera: carrera.segunda_opcion_carrera || null,
+                tercera_opcion_carrera: carrera.tercera_opcion_carrera || null,
                 ...escuela,
                 promedio_general: parseFloat(escuela.promedio_general),
                 ...tutor,
@@ -558,6 +560,10 @@ function StepPersonal({ data, onChange, errors, cfg }) {
 // PASO 2 – Carrera (DINÁMICO desde Supabase)
 // ════════════════════════════════════════════════════
 function StepCarrera({ data, onChange, errors, carreras, cfg }) {
+    // Filtrar carreras ya seleccionadas para 2ª y 3ª opción
+    const carrerasDisponibles2 = carreras.filter(c => c.nombre !== data.carrera_nombre);
+    const carrerasDisponibles3 = carreras.filter(c => c.nombre !== data.carrera_nombre && c.nombre !== data.segunda_opcion_carrera);
+
     return (
         <div className="prereg-section">
             <h2 className="prereg-section__title">{cfg.form_titulo_paso2}</h2>
@@ -565,6 +571,8 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
                 {cfg.form_desc_paso2}
             </p>
 
+            {/* ── 1ª OPCIÓN DE CARRERA ── */}
+            <h3 className="prereg-section__subtitle" style={{ marginTop: '0.5rem' }}>🥇 Primera Opción de Carrera <span className="required">*</span></h3>
             <div className="carrera-cards">
                 {carreras.map((c) => (
                     <label key={c.nombre} className={`carrera-card ${data.carrera_nombre === c.nombre ? 'selected' : ''}`}>
@@ -573,7 +581,16 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
                             name="carrera_nombre"
                             value={c.nombre}
                             checked={data.carrera_nombre === c.nombre}
-                            onChange={onChange}
+                            onChange={(e) => {
+                                onChange(e);
+                                // Si la 2ª o 3ª coincide con la nueva 1ª, limpiar
+                                if (data.segunda_opcion_carrera === e.target.value) {
+                                    onChange({ target: { name: 'segunda_opcion_carrera', value: '' } });
+                                }
+                                if (data.tercera_opcion_carrera === e.target.value) {
+                                    onChange({ target: { name: 'tercera_opcion_carrera', value: '' } });
+                                }
+                            }}
                             hidden
                         />
                         <div className="carrera-card__icon">{c.icono || getCarreraIcon(c.nombre)}</div>
@@ -584,7 +601,6 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
             </div>
             {errors.carrera_nombre && <span className="field-error">{errors.carrera_nombre}</span>}
 
-            {/* También dropdown */}
             <div style={{ marginTop: '1.5rem' }}>
                 <SelectField
                     label="O selecciona desde el menú desplegable"
@@ -593,7 +609,42 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
                     onChange={onChange}
                     error={null}
                     options={carreras.map(c => c.nombre)}
-                    placeholder="-- Selecciona una carrera --"
+                    placeholder="-- Selecciona tu 1ª opción --"
+                />
+            </div>
+
+            {/* ── 2ª OPCIÓN DE CARRERA ── */}
+            <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(59,130,246,0.05)', borderRadius: '1rem', border: '1px dashed rgba(59,130,246,0.3)' }}>
+                <h3 className="prereg-section__subtitle" style={{ margin: '0 0 0.5rem 0' }}>🥈 Segunda Opción de Carrera <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal' }}>(opcional)</span></h3>
+                <p style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '1rem' }}>En caso de no haber cupo en tu primera opción, se considerará esta alternativa.</p>
+                <SelectField
+                    label="Segunda opción de carrera"
+                    name="segunda_opcion_carrera"
+                    value={data.segunda_opcion_carrera}
+                    onChange={(e) => {
+                        onChange(e);
+                        if (data.tercera_opcion_carrera === e.target.value) {
+                            onChange({ target: { name: 'tercera_opcion_carrera', value: '' } });
+                        }
+                    }}
+                    error={null}
+                    options={carrerasDisponibles2.map(c => c.nombre)}
+                    placeholder="-- Selecciona tu 2ª opción (opcional) --"
+                />
+            </div>
+
+            {/* ── 3ª OPCIÓN DE CARRERA ── */}
+            <div style={{ marginTop: '1rem', padding: '1.5rem', background: 'rgba(168,85,247,0.05)', borderRadius: '1rem', border: '1px dashed rgba(168,85,247,0.3)' }}>
+                <h3 className="prereg-section__subtitle" style={{ margin: '0 0 0.5rem 0' }}>🥉 Tercera Opción de Carrera <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal' }}>(opcional)</span></h3>
+                <p style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '1rem' }}>Otra alternativa en caso de que no haya disponibilidad en las dos primeras opciones.</p>
+                <SelectField
+                    label="Tercera opción de carrera"
+                    name="tercera_opcion_carrera"
+                    value={data.tercera_opcion_carrera}
+                    onChange={onChange}
+                    error={null}
+                    options={carrerasDisponibles3.map(c => c.nombre)}
+                    placeholder="-- Selecciona tu 3ª opción (opcional) --"
                 />
             </div>
         </div>
@@ -698,7 +749,9 @@ function StepConfirmacion({ aspirante, carrera, escuela, tutor, cfg }) {
         { label: 'Lugar de Nacimiento', value: aspirante.lugar_nacimiento },
         { label: 'Domicilio', value: `${aspirante.domicilio}, Col. ${aspirante.colonia}, ${aspirante.municipio}, C.P. ${aspirante.codigo_postal}` },
         { label: '— CARRERA —', value: '' },
-        { label: 'Carrera Elegida', value: carrera.carrera_nombre },
+        { label: '1ª Opción de Carrera', value: carrera.carrera_nombre },
+        ...(carrera.segunda_opcion_carrera ? [{ label: '2ª Opción de Carrera', value: carrera.segunda_opcion_carrera }] : []),
+        ...(carrera.tercera_opcion_carrera ? [{ label: '3ª Opción de Carrera', value: carrera.tercera_opcion_carrera }] : []),
         { label: '— ESCUELA —', value: '' },
         { label: 'Tipo de Escuela', value: escuela.escuela_tipo },
         { label: 'Escuela', value: escuela.escuela_nombre },

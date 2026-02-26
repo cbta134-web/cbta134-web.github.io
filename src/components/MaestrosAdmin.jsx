@@ -6161,7 +6161,7 @@ const MaestrosAdmin = () => {
                                                         <tr className={darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}>
                                                             <th className="p-4 font-bold text-sm">Folio / Fecha</th>
                                                             <th className="p-4 font-bold text-sm">Aspirante</th>
-                                                            <th className="p-4 font-bold text-sm">Carrera</th>
+                                                            <th className="p-4 font-bold text-sm">Carrera(s)</th>
                                                             <th className="p-4 font-bold text-sm">Promedio</th>
                                                             <th className="p-4 font-bold text-sm">Acciones</th>
                                                         </tr>
@@ -6181,7 +6181,11 @@ const MaestrosAdmin = () => {
                                                                         <div className="font-semibold">{p.nombre} {p.apellido_paterno} {p.apellido_materno}</div>
                                                                         <div className="text-xs text-slate-400">{p.curp}</div>
                                                                     </td>
-                                                                    <td className="p-4 text-sm">{p.carrera_nombre}</td>
+                                                                    <td className="p-4 text-sm">
+                                                                        <div className="font-semibold">{p.carrera_nombre}</div>
+                                                                        {p.segunda_opcion_carrera && <div className="text-xs opacity-60">2ª: {p.segunda_opcion_carrera}</div>}
+                                                                        {p.tercera_opcion_carrera && <div className="text-xs opacity-50">3ª: {p.tercera_opcion_carrera}</div>}
+                                                                    </td>
                                                                     <td className="p-4 font-bold text-center">{p.promedio_general}</td>
                                                                     <td className="p-4 text-center">
                                                                         <button
@@ -6678,11 +6682,23 @@ const MaestrosAdmin = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <h3 className="font-bold border-l-4 border-green-600 pl-3 uppercase text-xs tracking-wider opacity-60">Opción Académica</h3>
+                                        <h3 className="font-bold border-l-4 border-green-600 pl-3 uppercase text-xs tracking-wider opacity-60">Opciones Académicas</h3>
                                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-2xl border border-green-100 dark:border-green-800">
-                                            <p className="text-sm opacity-70 mb-1">Carrera Seleccionada:</p>
+                                            <p className="text-sm opacity-70 mb-1">🥇 1ª Opción de Carrera:</p>
                                             <p className="text-xl font-bold text-green-700 dark:text-green-400">{selectedPreregistro.carrera_nombre}</p>
                                         </div>
+                                        {selectedPreregistro.segunda_opcion_carrera && (
+                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800">
+                                                <p className="text-sm opacity-70 mb-1">🥈 2ª Opción de Carrera:</p>
+                                                <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{selectedPreregistro.segunda_opcion_carrera}</p>
+                                            </div>
+                                        )}
+                                        {selectedPreregistro.tercera_opcion_carrera && (
+                                            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-800">
+                                                <p className="text-sm opacity-70 mb-1">🥉 3ª Opción de Carrera:</p>
+                                                <p className="text-lg font-bold text-purple-700 dark:text-purple-400">{selectedPreregistro.tercera_opcion_carrera}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
