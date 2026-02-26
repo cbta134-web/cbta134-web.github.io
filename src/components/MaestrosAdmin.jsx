@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AddClubModal from './AddClubModal';
 import AddCareerModal from './AddCareerModal';
 import ChatbotPrompt from './ChatbotPrompt';
+import * as XLSX from 'xlsx';
 
 const MaestrosAdmin = () => {
     const navigate = useNavigate();
@@ -331,6 +332,7 @@ const MaestrosAdmin = () => {
     const [selectedPreregistro, setSelectedPreregistro] = useState(null);
     const [preregSearch, setPreregSearch] = useState('');
     const [preregFilterStatus, setPreregFilterStatus] = useState('Todos');
+    const [preregFilterYear, setPreregFilterYear] = useState('Todos');
 
     // Estados para Configuración de Pre-Registro
     const [preregConfig, setPreregConfig] = useState({
@@ -644,6 +646,83 @@ const MaestrosAdmin = () => {
             fetchPreregistros();
             setSelectedPreregistro(null);
         }
+    };
+
+    // Obtener años disponibles de los pre-registros
+    const getPreregAvailableYears = () => {
+        const years = preregistros
+            .map(p => new Date(p.created_at).getFullYear())
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .sort((a, b) => b - a);
+        return years;
+    };
+
+    // Filtrar pre-registros por año
+    const getFilteredPreregistros = () => {
+        return preregistros.filter(p => {
+            const matchesSearch = (p.nombre + ' ' + p.apellido_paterno + ' ' + p.apellido_materno + ' ' + p.folio + ' ' + p.curp)
+                .toLowerCase().includes(preregSearch.toLowerCase());
+            const matchesYear = preregFilterYear === 'Todos' || new Date(p.created_at).getFullYear().toString() === preregFilterYear;
+            return matchesSearch && matchesYear;
+        });
+    };
+
+    // Exportar pre-registros filtrados a Excel
+    const exportPreregistrosExcel = () => {
+        const filtered = getFilteredPreregistros();
+        if (filtered.length === 0) {
+            alert('No hay pre-registros para exportar con los filtros seleccionados.');
+            return;
+        }
+
+        const excelData = filtered.map((p, idx) => ({
+            'No.': idx + 1,
+            'Folio': p.folio || '',
+            'Fecha de Registro': p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
+            'Nombre': p.nombre || '',
+            'Apellido Paterno': p.apellido_paterno || '',
+            'Apellido Materno': p.apellido_materno || '',
+            'CURP': p.curp || '',
+            'Sexo': p.sexo || '',
+            'Fecha de Nacimiento': p.fecha_nacimiento || '',
+            'Estado Civil': p.estado_civil || '',
+            'Correo': p.correo || '',
+            'Teléfono': p.telefono || '',
+            'Lugar de Nacimiento': p.lugar_nacimiento || '',
+            'Domicilio': p.domicilio || '',
+            'Colonia': p.colonia || '',
+            'Municipio': p.municipio || '',
+            'Código Postal': p.codigo_postal || '',
+            '1ª Opción Carrera': p.carrera_nombre || '',
+            '2ª Opción Carrera': p.segunda_opcion_carrera || '',
+            '3ª Opción Carrera': p.tercera_opcion_carrera || '',
+            'Tipo Escuela': p.escuela_tipo || '',
+            'Nombre Escuela': p.escuela_nombre || '',
+            'Municipio Escuela': p.escuela_municipio || '',
+            'Promedio General': p.promedio_general || '',
+            'Tutor Nombre': p.tutor_nombre || '',
+            'Tutor Parentesco': p.tutor_parentesco || '',
+            'Tutor CURP': p.tutor_curp || '',
+            'Tutor Ocupación': p.tutor_ocupacion || '',
+            'Tutor Grado Estudios': p.tutor_grado_estudios || '',
+            'Tutor Teléfono': p.tutor_telefono || '',
+            'Estado': p.estado_registro || 'Pendiente',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
+
+        // Ajustar ancho de columnas
+        const colWidths = Object.keys(excelData[0]).map(key => ({
+            wch: Math.max(key.length + 2, ...excelData.map(row => String(row[key] || '').length + 2))
+        }));
+        ws['!cols'] = colWidths;
+
+        const wb = XLSX.utils.book_new();
+        const yearLabel = preregFilterYear === 'Todos' ? 'Todos' : preregFilterYear;
+        XLSX.utils.book_append_sheet(wb, ws, `PreRegistros ${yearLabel}`);
+
+        const fileName = `PreRegistros_${yearLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
     };
 
     const fetchPreregistroConfig = async () => {
@@ -6140,9 +6219,9 @@ const MaestrosAdmin = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Filtros y Búsqueda */}
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                                <div className="relative">
+                                            {/* Filtros, Búsqueda y Descarga Excel */}
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                                <div className="relative md:col-span-2">
                                                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                                                     <input
                                                         type="text"
@@ -6152,6 +6231,38 @@ const MaestrosAdmin = () => {
                                                         className={`w-full pl-10 pr-4 py-2 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                                     />
                                                 </div>
+                                                <div className="relative">
+                                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
+                                                    <select
+                                                        value={preregFilterYear}
+                                                        onChange={(e) => setPreregFilterYear(e.target.value)}
+                                                        className={`w-full pl-10 pr-4 py-2 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                    >
+                                                        <option value="Todos">Todos los años</option>
+                                                        {getPreregAvailableYears().map(year => (
+                                                            <option key={year} value={year.toString()}>{year}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <button
+                                                        onClick={exportPreregistrosExcel}
+                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-[1.02]"
+                                                    >
+                                                        <span className="material-symbols-outlined">download</span>
+                                                        <span>Descargar Excel</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Resumen filtrado */}
+                                            <div className={`flex items-center gap-3 mb-4 px-4 py-2 rounded-xl text-sm ${darkMode ? 'bg-slate-700/50 text-slate-300' : 'bg-blue-50 text-blue-700'}`}>
+                                                <span className="material-symbols-outlined text-sm">info</span>
+                                                <span>
+                                                    Mostrando <strong>{getFilteredPreregistros().length}</strong> de <strong>{preregistros.length}</strong> pre-registros
+                                                    {preregFilterYear !== 'Todos' && <> del año <strong>{preregFilterYear}</strong></>}
+                                                    {preregSearch && <> que coinciden con "<strong>{preregSearch}</strong>"</>}
+                                                </span>
                                             </div>
 
                                             {/* Tabla de Pre-Registros */}
@@ -6167,10 +6278,7 @@ const MaestrosAdmin = () => {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {preregistros
-                                                            .filter(p => {
-                                                                return (p.nombre + ' ' + p.apellido_paterno + ' ' + p.apellido_materno + ' ' + p.folio + ' ' + p.curp).toLowerCase().includes(preregSearch.toLowerCase());
-                                                            })
+                                                        {getFilteredPreregistros()
                                                             .map(p => (
                                                                 <tr key={p.id} className={`border-t ${darkMode ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
                                                                     <td className="p-4">
@@ -6198,10 +6306,13 @@ const MaestrosAdmin = () => {
                                                                     </td>
                                                                 </tr>
                                                             ))}
-                                                        {preregistros.length === 0 && (
+                                                        {getFilteredPreregistros().length === 0 && (
                                                             <tr>
                                                                 <td colSpan="5" className="p-10 text-center text-slate-400">
-                                                                    No hay pre-registros encontrados.
+                                                                    <div className="flex flex-col items-center gap-2">
+                                                                        <span className="material-symbols-outlined text-4xl opacity-30">search_off</span>
+                                                                        <span>No hay pre-registros {preregFilterYear !== 'Todos' ? `para el año ${preregFilterYear}` : ''} {preregSearch ? `que coincidan con "${preregSearch}"` : ''}</span>
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         )}
