@@ -139,7 +139,13 @@ const AddCareerModal = ({ isOpen, onClose, onCareerAdded, careerToEdit = null })
 
         } catch (err) {
             console.error('Error saving career:', err);
-            setError(err.message || 'Error al guardar la carrera técnica');
+            let userMessage = err.message || 'Error al guardar la carrera técnica';
+
+            if (err.message?.includes('Bucket not found')) {
+                userMessage = 'Error: No se encontró el bucket de almacenamiento. Por favor, ejecuta el script "supabase_storage_setup.sql" en el Editor SQL de Supabase para crearlo.';
+            }
+
+            setError(userMessage);
         } finally {
             setLoading(false);
         }

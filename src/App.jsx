@@ -109,7 +109,8 @@ const App = () => {
         .order('order_index', { ascending: true });
 
       if (data && data.length > 0) {
-        setHomeOptions(data);
+        // Filtrar tarjetas ocultas (is_visible === false)
+        setHomeOptions(data.filter(opt => opt.is_visible !== false));
       } else {
         setHomeOptions(initialOptions.map((opt, idx) => ({
           id: idx + 1,
@@ -325,7 +326,7 @@ const App = () => {
                       <div className="option-content">
                         <h3 className="option-title">{option.title}</h3>
                         <p className="option-description">{option.description}</p>
-                        <button className="option-button">Ver más</button>
+                        <button className="option-button">{option.button_text || 'Ver más'}</button>
                       </div>
                     </div>
                   ))}

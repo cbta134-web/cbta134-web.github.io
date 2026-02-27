@@ -1,3 +1,7 @@
+
+// no mover este componente grade
+
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -5,6 +9,7 @@ import AddClubModal from './AddClubModal';
 import AddCareerModal from './AddCareerModal';
 import ChatbotPrompt from './ChatbotPrompt';
 import * as XLSX from 'xlsx';
+import UiInterfazAdmin from './admin/UiInterfazAdmin';
 
 const MaestrosAdmin = () => {
     const navigate = useNavigate();
@@ -194,7 +199,7 @@ const MaestrosAdmin = () => {
     const [uploadingHero, setUploadingHero] = useState(false);
 
     const [homeOptionsAdmin, setHomeOptionsAdmin] = useState([]);
-    const [homeOptionForm, setHomeOptionForm] = useState({ image_url: '', title: '', description: '', path: '', is_locked: false });
+    const [homeOptionForm, setHomeOptionForm] = useState({ image_url: '', title: '', description: '', path: '', button_text: 'Ver más', is_locked: false, is_visible: true });
     const [editingHomeOption, setEditingHomeOption] = useState(null);
     const [homeOptionFile, setHomeOptionFile] = useState(null);
     const [uploadingHomeOption, setUploadingHomeOption] = useState(false);
@@ -2251,20 +2256,23 @@ const MaestrosAdmin = () => {
                     title: homeOptionForm.title,
                     description: homeOptionForm.description,
                     path: homeOptionForm.path,
-                    image_url: homeOptionForm.image_url
+                    image_url: homeOptionForm.image_url,
+                    button_text: homeOptionForm.button_text || 'Ver más',
+                    is_visible: homeOptionForm.is_visible !== false,
+                    is_locked: homeOptionForm.is_locked
                 })
                 .eq('id', editingHomeOption.id);
             if (!error) {
                 setEditingHomeOption(null);
-                setHomeOptionForm({ image_url: '', title: '', description: '', path: '', is_locked: false });
+                setHomeOptionForm({ image_url: '', title: '', description: '', path: '', button_text: 'Ver más', is_locked: false, is_visible: true });
                 fetchUiData();
             }
         } else {
             const { error } = await supabase
                 .from('home_options')
-                .insert([{ ...homeOptionForm, order_index: homeOptionsAdmin.length + 1 }]);
+                .insert([{ ...homeOptionForm, button_text: homeOptionForm.button_text || 'Ver más', is_visible: homeOptionForm.is_visible !== false, order_index: homeOptionsAdmin.length + 1 }]);
             if (!error) {
-                setHomeOptionForm({ image_url: '', title: '', description: '', path: '', is_locked: false });
+                setHomeOptionForm({ image_url: '', title: '', description: '', path: '', button_text: 'Ver más', is_locked: false, is_visible: true });
                 fetchUiData();
             }
         }
@@ -2279,6 +2287,16 @@ const MaestrosAdmin = () => {
             const { error } = await supabase.from('home_options').delete().eq('id', item.id);
             if (!error) fetchUiData();
         }
+    };
+
+    const handleToggleHomeOptionVisibility = async (item) => {
+        const newVisibility = item.is_visible === false ? true : false;
+        const { error } = await supabase
+            .from('home_options')
+            .update({ is_visible: newVisibility })
+            .eq('id', item.id);
+        if (!error) fetchUiData();
+        else alert('Error al cambiar visibilidad: ' + error.message);
     };
 
     // CRÉDITOS CRUD
@@ -2870,45 +2888,49 @@ const MaestrosAdmin = () => {
             }
 
             // Validar el token y sus scopes con tokeninfo (no requiere Gmail scope)
-            const res = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(tokenToVerify)}`);
+            try {
+                const res = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(tokenToVerify)}`);
 
-            if (res.ok) {
-                const tokenInfo = await res.json();
-                const scopeText = tokenInfo?.scope || '';
-                const hasGmailSend = scopeText.includes('https://www.googleapis.com/auth/gmail.send');
+                if (res.ok) {
+                    const tokenInfo = await res.json();
+                    const scopeText = tokenInfo?.scope || '';
+                    const hasGmailSend = scopeText.includes('https://www.googleapis.com/auth/gmail.send');
 
-                if (!hasGmailSend) {
-                    // Token válido pero sin permiso Gmail
+                    if (!hasGmailSend) {
+                        // Token válido pero sin permiso Gmail
+                        localStorage.removeItem('gmail_provider_token');
+                        localStorage.removeItem('gmail_user_email');
+                        setGmailConnected(false);
+                        setProviderToken(null);
+                        setGmailEmail(null);
+                        setGmailStatus({
+                            type: 'error',
+                            message: 'Tu sesión de Google no tiene permisos de Gmail. Cierra sesión e inicia sesión nuevamente con Google para autorizar Gmail.'
+                        });
+                        return;
+                    }
+
+                    const email = tokenInfo?.email || emailFromStorage;
+                    setGmailConnected(true);
+                    setProviderToken(tokenToVerify);
+                    setGmailEmail(email);
+                    setGmailStatus({ type: 'success', message: `Gmail conectado como ${email || 'tu cuenta'}` });
+                } else {
+                    // Token inválido o expirado (Status 400, 401, etc)
                     localStorage.removeItem('gmail_provider_token');
                     localStorage.removeItem('gmail_user_email');
                     setGmailConnected(false);
                     setProviderToken(null);
                     setGmailEmail(null);
+
                     setGmailStatus({
                         type: 'error',
-                        message: 'Tu sesión de Google no tiene permisos de Gmail. Cierra sesión y vuelve a iniciar con Google para autorizar Gmail.'
+                        message: 'La sesión de Gmail ha expirado o es inválida. Cierra sesión e inicia sesión nuevamente con Google.'
                     });
-                    return;
                 }
-
-                const email = tokenInfo?.email || emailFromStorage;
-                setGmailConnected(true);
-                setProviderToken(tokenToVerify);
-                setGmailEmail(email);
-                setGmailStatus({ type: 'success', message: `Gmail conectado como ${email || 'tu cuenta'}` });
-            } else {
-                const reason = 'invalid_token';
-                // Token inválido, limpiar localStorage
-                localStorage.removeItem('gmail_provider_token');
-                localStorage.removeItem('gmail_user_email');
+            } catch (fetchErr) {
+                console.warn('Error verificando token de Google:', fetchErr);
                 setGmailConnected(false);
-                setProviderToken(null);
-                setGmailEmail(null);
-
-                setGmailStatus({
-                    type: 'error',
-                    message: 'El token de Gmail ha expirado. Cierra sesión e inicia sesión nuevamente.'
-                });
             }
         } catch (err) {
             setGmailConnected(false);
@@ -4359,6 +4381,31 @@ const MaestrosAdmin = () => {
                 )}
 
                 {activeNav === 'ui' && (
+                    <UiInterfazAdmin
+                        darkMode={darkMode}
+                        uiHeaderForm={uiHeaderForm}
+                        setUiHeaderForm={setUiHeaderForm}
+                        handleSaveUiHeader={handleSaveUiHeader}
+                        uiHeaderLinks={uiHeaderLinks}
+                        uiHeaderLinkForm={uiHeaderLinkForm}
+                        setUiHeaderLinkForm={setUiHeaderLinkForm}
+                        editingHeaderLink={editingHeaderLink}
+                        setEditingHeaderLink={setEditingHeaderLink}
+                        handleSaveHeaderLink={handleSaveHeaderLink}
+                        handleDeleteHeaderLink={handleDeleteHeaderLink}
+                        uiFooterForm={uiFooterForm}
+                        setUiFooterForm={setUiFooterForm}
+                        handleSaveUiFooter={handleSaveUiFooter}
+                        uiFooterLinks={uiFooterLinks}
+                        uiFooterLinkForm={uiFooterLinkForm}
+                        setUiFooterLinkForm={setUiFooterLinkForm}
+                        editingFooterLink={editingFooterLink}
+                        setEditingFooterLink={setEditingFooterLink}
+                        handleSaveFooterLink={handleSaveFooterLink}
+                        handleDeleteFooterLink={handleDeleteFooterLink}
+                    />
+                )}
+                {activeNav === 'ui_OLD_REMOVED' && (
                     <div className="max-w-6xl mx-auto space-y-10">
                         <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
                             <h3 className="text-xl font-bold mb-6">Header</h3>
@@ -6885,5 +6932,48 @@ const MaestrosAdmin = () => {
         </div >
     );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export default MaestrosAdmin;
