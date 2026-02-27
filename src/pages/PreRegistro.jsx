@@ -394,24 +394,24 @@ export default function PreRegistro({ setCurrentView }) {
 
     if (submitted || existingReg) {
         return (
-            <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-sans transition-colors duration-500 overflow-x-hidden">
+            <div className="bg-background-light min-h-screen flex flex-col font-sans transition-colors duration-500 overflow-x-hidden">
                 <header className="w-full pt-16 pb-12 px-6 text-center relative">
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/20 -z-10 animate-gradient-flow"></div>
-                    <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-white dark:bg-slate-900 rounded-[32px] text-5xl shadow-2xl border border-emerald-50 dark:border-emerald-800 animate-pulse-icon">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-gradient-to-b from-emerald-50/50 to-transparent -z-10 animate-gradient-flow"></div>
+                    <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-white rounded-[32px] text-5xl shadow-2xl border border-emerald-50 animate-pulse-icon">
                         👋
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                         ¡Hola de nuevo, <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500 font-black">aspirante</span>!
                     </h1>
-                    <p className="text-lg text-slate-500 dark:text-slate-400 mb-10 max-w-2xl mx-auto font-medium">
+                    <p className="text-lg text-slate-500 mb-10 max-w-2xl mx-auto font-medium">
                         Tu proceso de pre-registro está casi listo. Sigue estos pasos para finalizar satisfactoriamente.
                     </p>
-                    <div className="relative group inline-flex items-center gap-4 bg-white dark:bg-slate-900 px-8 py-4 rounded-[28px] border border-emerald-100 dark:border-emerald-800/50 shadow-2xl shadow-emerald-900/10">
+                    <div className="relative group inline-flex items-center gap-4 bg-white px-8 py-4 rounded-[28px] border border-emerald-100 shadow-2xl shadow-emerald-900/10">
                         <div className="flex flex-col items-start">
-                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">Folio de Aspirante</span>
-                            <span className="text-xl md:text-2xl font-mono font-black text-slate-800 dark:text-white tracking-wider">{folio}</span>
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Folio de Aspirante</span>
+                            <span className="text-xl md:text-2xl font-mono font-black text-slate-800 tracking-wider">{folio}</span>
                         </div>
-                        <div className="w-px h-10 bg-slate-100 dark:bg-slate-800 mx-2"></div>
+                        <div className="w-px h-10 bg-slate-100 mx-2"></div>
                         <div className="flex items-center gap-2 text-emerald-600">
                             <span className="material-symbols-outlined font-bold text-3xl">verified</span>
                         </div>
@@ -421,9 +421,9 @@ export default function PreRegistro({ setCurrentView }) {
                 <main className="flex-grow w-full max-w-7xl mx-auto px-6 pb-24">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                         {/* Paso 1 */}
-                        <div className="instruction-card relative group bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                            <div className="absolute top-0 right-0 p-8 opacity-10 dark:opacity-5 group-hover:opacity-20 transition-all duration-700 -rotate-12 translate-x-4">
+                        <div className="instruction-card relative group bg-white p-8 md:p-10 rounded-[40px] border border-slate-100 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-all duration-700 -rotate-12 translate-x-4">
                                 <span className="material-symbols-outlined text-[150px]">download</span>
                             </div>
                             <div className="glow-effect absolute inset-0 opacity-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.08),transparent_70%)] pointer-events-none"></div>
@@ -431,25 +431,25 @@ export default function PreRegistro({ setCurrentView }) {
                                 <div className="absolute -top-4 -left-4 w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-900/20">1</div>
                                 <div className="relative mb-10">
                                     <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-3xl group-hover:bg-emerald-400/40 transition-all duration-700 animate-wave"></div>
-                                    <div className="relative w-32 h-32 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 dark:border-emerald-800/30 overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent dark:from-emerald-900/20 opacity-50"></div>
+                                    <div className="relative w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent opacity-50"></div>
                                         <div className="animate-3d">
-                                            <span className="material-symbols-outlined text-6xl text-emerald-600 dark:text-emerald-400 animate-pulse-icon">file_download</span>
+                                            <span className="material-symbols-outlined text-6xl text-emerald-600 animate-pulse-icon">file_download</span>
                                         </div>
                                     </div>
                                     <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-400 rounded-full animate-float-particle opacity-40"></div>
                                 </div>
-                                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-4">Descarga tu ficha</h3>
-                                <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                                <h3 className="text-2xl font-extrabold text-slate-800 mb-4">Descarga tu ficha</h3>
+                                <p className="text-slate-500 leading-relaxed font-medium">
                                     Obtén tu comprobante oficial en formato PDF. Es el documento más importante de esta etapa.
                                 </p>
                             </div>
                         </div>
 
                         {/* Paso 2 */}
-                        <div className="instruction-card relative group bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                            <div className="absolute top-0 right-0 p-8 opacity-10 dark:opacity-5 group-hover:opacity-20 transition-all duration-700 rotate-12 translate-x-4">
+                        <div className="instruction-card relative group bg-white p-8 md:p-10 rounded-[40px] border border-slate-100 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-all duration-700 rotate-12 translate-x-4">
                                 <span className="material-symbols-outlined text-[150px]">print</span>
                             </div>
                             <div className="glow-effect absolute inset-0 opacity-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.08),transparent_70%)] pointer-events-none"></div>
@@ -457,25 +457,25 @@ export default function PreRegistro({ setCurrentView }) {
                                 <div className="absolute -top-4 -left-4 w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-900/20">2</div>
                                 <div className="relative mb-10">
                                     <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-3xl group-hover:bg-emerald-400/40 transition-all duration-700 animate-wave" style={{ animationDelay: '-3s' }}></div>
-                                    <div className="relative w-32 h-32 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 dark:border-emerald-800/30 overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent dark:from-emerald-900/20 opacity-50"></div>
+                                    <div className="relative w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent opacity-50"></div>
                                         <div className="relative animate-3d" style={{ animationDelay: '-1s' }}>
-                                            <span className="material-symbols-outlined text-6xl text-emerald-600 dark:text-emerald-400">print</span>
-                                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-5 bg-emerald-100 dark:bg-emerald-900/50 rounded-sm animate-paper border-x border-emerald-300 dark:border-emerald-700"></div>
+                                            <span className="material-symbols-outlined text-6xl text-emerald-600">print</span>
+                                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-5 bg-emerald-100 rounded-sm animate-paper border-x border-emerald-300"></div>
                                         </div>
                                     </div>
                                 </div>
-                                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-4">Imprime 2 veces</h3>
-                                <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                                <h3 className="text-2xl font-extrabold text-slate-800 mb-4">Imprime 2 veces</h3>
+                                <p className="text-slate-500 leading-relaxed font-medium">
                                     Prepara dos copias físicas legibles del documento para su entrega.
                                 </p>
                             </div>
                         </div>
 
                         {/* Paso 3 */}
-                        <div className="instruction-card relative group bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                            <div className="absolute top-0 right-0 p-8 opacity-10 dark:opacity-5 group-hover:opacity-20 transition-all duration-700 -rotate-6 translate-x-4">
+                        <div className="instruction-card relative group bg-white p-8 md:p-10 rounded-[40px] border border-slate-100 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-all duration-700 -rotate-6 translate-x-4">
                                 <span className="material-symbols-outlined text-[150px]">apartment</span>
                             </div>
                             <div className="glow-effect absolute inset-0 opacity-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.08),transparent_70%)] pointer-events-none"></div>
@@ -483,15 +483,15 @@ export default function PreRegistro({ setCurrentView }) {
                                 <div className="absolute -top-4 -left-4 w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-900/20">3</div>
                                 <div className="relative mb-10">
                                     <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-3xl group-hover:bg-emerald-400/40 transition-all duration-700 animate-wave" style={{ animationDelay: '-5s' }}></div>
-                                    <div className="relative w-32 h-32 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 dark:border-emerald-800/30 overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent dark:from-emerald-900/20 opacity-50"></div>
+                                    <div className="relative w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-inner border border-emerald-50/50 overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent opacity-50"></div>
                                         <div className="animate-3d" style={{ animationDelay: '-2s' }}>
-                                            <span className="material-symbols-outlined text-6xl text-emerald-600 dark:text-emerald-400 animate-pulse-icon">account_balance</span>
+                                            <span className="material-symbols-outlined text-6xl text-emerald-600 animate-pulse-icon">account_balance</span>
                                         </div>
                                     </div>
                                 </div>
-                                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-4">Acude a ventanilla</h3>
-                                <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                                <h3 className="text-2xl font-extrabold text-slate-800 mb-4">Acude a ventanilla</h3>
+                                <p className="text-slate-500 leading-relaxed font-medium">
                                     Visita el área de Servicios Escolares con tus documentos originales para el cotejo final.
                                 </p>
                             </div>
@@ -499,7 +499,7 @@ export default function PreRegistro({ setCurrentView }) {
                     </div>
                 </main>
 
-                <footer className="sticky bottom-0 w-full bg-white/60 dark:bg-slate-950/60 backdrop-blur-2xl border-t border-emerald-50 dark:border-slate-800/50 py-6 px-8 z-40">
+                <footer className="sticky bottom-0 w-full bg-white/60 backdrop-blur-2xl border-t border-emerald-50 py-6 px-8 z-40">
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="hidden lg:flex items-center gap-4">
                             <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -507,7 +507,7 @@ export default function PreRegistro({ setCurrentView }) {
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Institución</p>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">CBTA No. 134 - Control Escolar</p>
+                                <p className="text-sm font-bold text-slate-700">CBTA No. 134 - Control Escolar</p>
                             </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -522,7 +522,7 @@ export default function PreRegistro({ setCurrentView }) {
                             </button>
                             <button
                                 onClick={() => setCurrentView && setCurrentView('home')}
-                                className="flex items-center justify-center gap-3 bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 font-bold py-4 px-8 rounded-2xl transition-all active:scale-95 text-lg border border-slate-200 dark:border-slate-700"
+                                className="flex items-center justify-center gap-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold py-4 px-8 rounded-2xl transition-all active:scale-95 text-lg border border-slate-200"
                             >
                                 <span className="material-symbols-outlined text-2xl">logout</span>
                                 <span>Finalizar</span>
@@ -531,7 +531,7 @@ export default function PreRegistro({ setCurrentView }) {
                         <div className="text-center md:text-right">
                             <button
                                 onClick={handleLogout}
-                                className="group flex items-center justify-center md:justify-end gap-2 text-xs font-bold text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                className="group flex items-center justify-center md:justify-end gap-2 text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors"
                             >
                                 <span className="material-symbols-outlined text-base">person</span>
                                 <span className="border-b border-transparent group-hover:border-emerald-500/30 pb-0.5 transition-all">Cerrar sesión de {session?.user?.email}</span>
@@ -539,17 +539,6 @@ export default function PreRegistro({ setCurrentView }) {
                         </div>
                     </div>
                 </footer>
-
-                {/* Theme Toggle */}
-                <div className="fixed top-6 right-6 z-50">
-                    <button
-                        className="w-12 h-12 rounded-[18px] bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg shadow-xl border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
-                        onClick={() => document.documentElement.classList.toggle('dark')}
-                    >
-                        <span className="material-symbols-outlined text-2xl dark:hidden group-hover:rotate-90 transition-transform duration-500">dark_mode</span>
-                        <span className="material-symbols-outlined text-2xl hidden dark:block group-hover:-rotate-90 transition-transform duration-500">light_mode</span>
-                    </button>
-                </div>
             </div>
         );
     }
