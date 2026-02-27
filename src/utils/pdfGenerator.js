@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 /**
  * Genera la Ficha de Pre-Registro en PDF (una sola página completa).
- * Sin firmas, con espacio para foto y layout optimizado.
+ * Con espacio para foto en el encabezado izquierdo, sin firmas y layout optimizado.
  *
  * @param {Object} data - Datos del registro completo
  * @returns {Blob} PDF como Blob
@@ -15,172 +15,158 @@ export async function generarFichaPDF(data) {
 
     // ── Colores institucionales ───────────────────────────
     const colorVerde = [4, 102, 56];   // #046638  CBTa verde
-    const colorOro = [212, 175, 55];   // #D4AF37
+    const color Oro = [212, 175, 55];   // #D4AF37
     const colorGris = [245, 245, 245];
     const colorTexto = [30, 30, 30];
     const colorGrisMedio = [100, 100, 100];
     const BN = [255, 255, 255];
 
     // ── ENCABEZADO ────────────────────────────────────────
+    // Altura aumentada para acomodar la foto
+    const headerH = 42;
     doc.setFillColor(...colorVerde);
-    doc.rect(0, 0, W, 32, 'F');
+    doc.rect(0, 0, W, headerH, 'F');
 
-    // Logo
+    // RECUADRO PARA FOTO (Top Left)
+    const photoW = 27;
+    const photoH = 34;
     doc.setFillColor(...BN);
-    doc.roundedRect(margin, 6, 20, 20, 2, 2, 'F');
-    doc.setFontSize(7);
-    doc.setTextColor(...colorVerde);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CBTa\n134', margin + 10, 14, { align: 'center', lineHeightFactor: 1.5 });
+    doc.roundedRect(margin, 4, photoW, photoH, 1, 1, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.2);
+    doc.rect(margin, 4, photoW, photoH, 'S');
 
-    // Título principal
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CENTRO DE BACHILLERATO TECNOLÓGICO', W / 2, 11, { align: 'center' });
-    doc.text('AGROPECUARIO No. 134', W / 2, 17, { align: 'center' });
-
-    doc.setFontSize(10);
+    doc.setFontSize(6.5);
+    doc.setTextColor(...colorGrisMedio);
     doc.setFont('helvetica', 'normal');
-    doc.text('FICHA DE PRE-REGISTRO DE NUEVO INGRESO', W / 2, 23, { align: 'center' });
+    doc.text('PEGAR FOTO\nAQUÍ', margin + photoW / 2, 18, { align: 'center', lineHeightFactor: 1.4 });
+
+    // Título principal (A la derecha de la foto)
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CENTRO DE BACHILLERATO TECNOLÓGICO', W / 2 + 10, 12, { align: 'center' });
+    doc.text('AGROPECUARIO No. 134', W / 2 + 10, 19, { align: 'center' });
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('FICHA DE PRE-REGISTRO DE NUEVO INGRESO', W / 2 + 10, 27, { align: 'center' });
 
     const anio = new Date().getFullYear();
-    doc.setFontSize(8.5);
-    doc.text(`Ciclo Escolar ${anio}\u2013${anio + 1}`, W / 2, 29, { align: 'center' });
+    doc.setFontSize(9.5);
+    doc.text(`Ciclo Escolar ${anio}\u2013${anio + 1}`, W / 2 + 10, 34, { align: 'center' });
 
     // ── FOLIO Y FECHA ─────────────────────────────────────
-    let y = 38;
+    let y = headerH + 6;
     doc.setFillColor(...colorGris);
-    doc.roundedRect(margin, y, W - margin * 2, 12, 2, 2, 'F');
+    doc.roundedRect(margin, y, W - margin * 2, 12, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor(...colorVerde);
-    doc.text(`FOLIO: ${data.folio}`, margin + 5, y + 7.5);
+    doc.text(`FOLIO: ${data.folio}`, margin + 6, y + 7.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setTextColor(...colorGrisMedio);
     const fechaActual = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-    doc.text(`Fecha de emisión: ${fechaActual}`, W - margin - 5, y + 7.5, { align: 'right' });
+    doc.text(`Fecha de emisión: ${fechaActual}`, W - margin - 6, y + 7.5, { align: 'right' });
 
     y += 18;
 
-    // ── RECUADRO PARA FOTO ────────────────────────────────
-    // Ubicado a la derecha de la primera sección
-    const photoW = 30;
-    const photoH = 35;
-    const photoX = W - margin - photoW;
-    const photoY = y + 2;
-
-    doc.setDrawColor(...colorGrisMedio);
-    doc.setLineWidth(0.3);
-    doc.rect(photoX, photoY, photoW, photoH, 'S');
-    doc.setFontSize(8);
-    doc.setTextColor(...colorGrisMedio);
-    doc.text('FOTO AQUÍ', photoX + photoW / 2, photoY + photoH / 2, { align: 'center' });
-
     // ── SECCIÓN HELPER ────────────────────────────────────
-    const seccionHeader = (titulo, yPos, customWidth) => {
-        const width = customWidth || (W - margin * 2);
+    const seccionHeader = (titulo, yPos) => {
         doc.setFillColor(...colorVerde);
-        doc.rect(margin, yPos, width, 7, 'F');
+        doc.rect(margin, yPos, W - margin * 2, 7, 'F');
+        // Acento dorado
+        doc.setFillColor(212, 175, 55);
+        doc.rect(margin, yPos, 2, 7, 'F');
+
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
+        doc.setFontSize(9.5);
         doc.setTextColor(255, 255, 255);
-        doc.text(titulo, margin + 3, yPos + 5);
+        doc.text(titulo, margin + 5, yPos + 5);
         return yPos + 8;
     };
 
-    const tablaCeldas = (body, yPos, customWidth) => {
-        const width = customWidth || (W - margin * 2);
+    const tablaCeldas = (body, yPos) => {
         autoTable(doc, {
             body,
             startY: yPos,
-            margin: { left: margin, right: W - (margin + width) },
+            margin: { left: margin, right: margin },
             theme: 'grid',
             styles: {
-                fontSize: 8,
-                cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+                fontSize: 8.5,
+                cellPadding: { top: 1.4, bottom: 1.4, left: 3, right: 3 },
                 textColor: colorTexto,
+                lineColor: [220, 220, 220],
+                lineWidth: 0.15,
             },
             columnStyles: {
-                0: { fontStyle: 'bold', fillColor: [230, 245, 235], cellWidth: width * 0.35 },
+                0: { fontStyle: 'bold', fillColor: [235, 245, 238], cellWidth: 55 },
                 1: { cellWidth: 'auto' },
             },
-            alternateRowStyles: { fillColor: [250, 252, 250] },
+            alternateRowStyles: { fillColor: [252, 254, 252] },
         });
         return doc.lastAutoTable.finalY + 4;
     };
 
-    // ── SEC 1: DATOS PERSONALES ───────────────────────────
-    // Esta sección es más estrecha para dejar espacio a la foto
-    const sec1Width = (W - margin * 2) - photoW - 5;
-    y = seccionHeader('1. DATOS DEL ASPIRANTE', y, sec1Width);
-
-    // Ajustamos los datos para que quepan en el ancho reducido
+    // ── SEC 1: DATOS DEL ASPIRANTE ───────────────────────────
+    y = seccionHeader('1. DATOS PERSONALES DEL ASPIRANTE', y);
     y = tablaCeldas([
-        ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`],
+        ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`.toUpperCase()],
         ['CURP', data.curp],
-        ['Sexo', data.sexo],
-        ['Fecha Nac.', data.fecha_nacimiento],
+        ['Sexo / Fecha Nac.', `${data.sexo} | ${data.fecha_nacimiento}`],
         ['Teléfono', data.telefono],
-        ['Correo', data.correo],
-    ], y, sec1Width);
-
-    // Si la tabla terminó antes que la foto, bajamos y para que lo siguiente no choque
-    if (y < photoY + photoH + 5) {
-        y = photoY + photoH + 5;
-    }
-
-    // El resto de los datos personales que no cabían al lado de la foto
-    y = tablaCeldas([
+        ['Correo Electrónico', data.correo],
+        ['Lugar de Nacimiento', data.lugar_nacimiento],
         ['Estado Civil', data.estado_civil],
-        ['Lugar Nacimiento', data.lugar_nacimiento],
-        ['Domicilio', `${data.domicilio}, Col. ${data.colonia}, ${data.municipio}, C.P. ${data.codigo_postal}`],
+        ['Domicilio Completo', `${data.domicilio}, Col. ${data.colonia}, ${data.municipio}, C.P. ${data.codigo_postal}`],
     ], y);
 
-    // ── SEC 2: CARRERA(S) ──────────────────────────────────
+    // ── SEC 2: SELECCIÓN ACADÉMICA ──────────────────────────
     y = seccionHeader('2. CARRERAS TÉCNICAS SELECCIONADAS', y);
-    const carreraRows = [['1ª Opción', data.carrera_nombre]];
-    if (data.segunda_opcion_carrera) carreraRows.push(['2ª Opción', data.segunda_opcion_carrera]);
-    if (data.tercera_opcion_carrera) carreraRows.push(['3ª Opción', data.tercera_opcion_carrera]);
+    const carreraRows = [['PRIMERA OPCIÓN', (data.carrera_nombre || '').toUpperCase()]];
+    if (data.segunda_opcion_carrera) {
+        carreraRows.push(['SEGUNDA OPCIÓN', (data.segunda_opcion_carrera).toUpperCase()]);
+    }
+    if (data.tercera_opcion_carrera) {
+        carreraRows.push(['TERCERA OPCIÓN', (data.tercera_opcion_carrera).toUpperCase()]);
+    }
     y = tablaCeldas(carreraRows, y);
 
-    // ── SEC 3: ESCUELA ────────────────────────────────────
+    // ── SEC 3: ANTECEDENTES ESCOLARES ────────────────────────
     y = seccionHeader('3. ESCUELA DE PROCEDENCIA', y);
     y = tablaCeldas([
-        ['Tipo de Escuela', data.escuela_tipo],
-        ['Nombre', data.escuela_nombre],
-        ['Municipio', data.escuela_municipio],
-        ['Promedio General', `${data.promedio_general} / 10`],
+        ['Nombre de la Escuela', data.escuela_nombre],
+        ['Subsistema / Municipio', `${data.escuela_tipo} | ${data.escuela_municipio}`],
+        ['Promedio General', `${data.promedio_general} / 10.0`],
     ], y);
 
-    // ── SEC 4: TUTOR ──────────────────────────────────────
-    y = seccionHeader('4. DATOS DEL PADRE / MADRE / TUTOR', y);
+    // ── SEC 4: DATOS DEL TUTOR ──────────────────────────────
+    y = seccionHeader('4. DATOS DEL PADRE, MADRE O TUTOR LEGAL', y);
     y = tablaCeldas([
-        ['Parentesco', data.tutor_parentesco],
         ['Nombre Completo', data.tutor_nombre],
-        ['CURP', data.tutor_curp],
-        ['Ocupación', data.tutor_ocupacion],
-        ['Último Grado de Estudio', data.tutor_grado_estudios],
-        ['Teléfono', data.tutor_telefono],
+        ['Parentesco / CURP', `${data.tutor_parentesco} | ${data.tutor_curp}`],
+        ['Ocupación / Grado Estudio', `${data.tutor_ocupacion} | ${data.tutor_grado_estudios}`],
+        ['Teléfono de Contacto', data.tutor_telefono],
     ], y);
 
     // ── PIE DE PÁGINA ─────────────────────────────────────
     const pH = doc.internal.pageSize.getHeight();
     doc.setFillColor(...colorVerde);
-    doc.rect(0, pH - 12, W, 12, 'F');
+    doc.rect(0, pH - 14, W, 14, 'F');
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(255, 255, 255);
     doc.text(
-        'CBTa 134 \u00B7 Documento de Pre-Registro \u00B7 No tiene validez sin sello institucional',
-        W / 2, pH - 6.5,
+        'CBTa 134 \u00B7 Este documento no tiene validez oficial sin sello de la institución y firmas originales.',
+        W / 2, pH - 7.5,
         { align: 'center' }
     );
-    doc.text(`Folio: ${data.folio}`, margin, pH - 3);
-    doc.text(`${new Date().toLocaleDateString('es-MX')}`, W - margin, pH - 3, { align: 'right' });
+    doc.setFontSize(7.5);
+    doc.text(`Folio de Pre-Registro: ${data.folio}`, margin, pH - 4);
+    doc.text(`Documento generado electrónicamente el ${new Date().toLocaleDateString()}`, W - margin, pH - 4, { align: 'right' });
 
     return doc.output('blob');
 }
