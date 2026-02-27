@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 /**
  * Genera la Ficha de Pre-Registro en PDF (una sola página completa).
- * Con espacio para foto en el encabezado izquierdo, sin firmas y layout optimizado.
+ * Datos totalmente separados (municipio, CP, etc.), espacio para foto en el encabezado izquierdo.
  *
  * @param {Object} data - Datos del registro completo
  * @returns {Blob} PDF como Blob
@@ -22,7 +22,6 @@ export async function generarFichaPDF(data) {
     const BN = [255, 255, 255];
 
     // ── ENCABEZADO ────────────────────────────────────────
-    // Altura aumentada para acomodar la foto
     const headerH = 42;
     doc.setFillColor(...colorVerde);
     doc.rect(0, 0, W, headerH, 'F');
@@ -41,7 +40,7 @@ export async function generarFichaPDF(data) {
     doc.setFont('helvetica', 'normal');
     doc.text('PEGAR FOTO\nAQUÍ', margin + photoW / 2, 18, { align: 'center', lineHeightFactor: 1.4 });
 
-    // Título principal (A la derecha de la foto)
+    // Título principal
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
@@ -71,13 +70,13 @@ export async function generarFichaPDF(data) {
     const fechaActual = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
     doc.text(`Fecha de emisión: ${fechaActual}`, W - margin - 6, y + 7.5, { align: 'right' });
 
-    y += 18;
+    y += 16;
 
     // ── SECCIÓN HELPER ────────────────────────────────────
-    const seccionHeader = (titulo, yPos) => {
+    const seccionHeader = (titulo, yPos, customWidth) => {
+        const width = customWidth || (W - margin * 2);
         doc.setFillColor(...colorVerde);
-        doc.rect(margin, yPos, W - margin * 2, 7, 'F');
-        // Acento dorado
+        doc.rect(margin, yPos, width, 7, 'F');
         doc.setFillColor(212, 175, 55);
         doc.rect(margin, yPos, 2, 7, 'F');
 
@@ -88,57 +87,69 @@ export async function generarFichaPDF(data) {
         return yPos + 8;
     };
 
-    const tablaCeldas = (body, yPos) => {
+    const tablaCeldas = (body, yPos, customWidth) => {
+        const width = customWidth || (W - margin * 2);
         autoTable(doc, {
             body,
             startY: yPos,
-            margin: { left: margin, right: margin },
+            margin: { left: margin, right: W - (margin + width) },
             theme: 'grid',
             styles: {
                 fontSize: 8.5,
-                cellPadding: { top: 1.4, bottom: 1.4, left: 3, right: 3 },
+                cellPadding: { top: 1.2, bottom: 1.2, left: 3, right: 3 },
                 textColor: colorTexto,
                 lineColor: [220, 220, 220],
                 lineWidth: 0.15,
             },
             columnStyles: {
-                0: { fontStyle: 'bold', fillColor: [235, 245, 238], cellWidth: 55 },
+                0: { fontStyle: 'bold', fillColor: [235, 245, 238], cellWidth: width * 0.35 },
                 1: { cellWidth: 'auto' },
             },
             alternateRowStyles: { fillColor: [252, 254, 252] },
         });
-        return doc.lastAutoTable.finalY + 4;
+        return doc.lastAutoTable.finalY + 3;
     };
 
     // ── SEC 1: DATOS DEL ASPIRANTE ───────────────────────────
-    y = seccionHeader('1. DATOS PERSONALES DEL ASPIRANTE', y);
+    const sec1Width = (W - margin * 2) - photoW - 5;
+    y = seccionHeader('1. DATOS PERSONALES DEL ASPIRANTE', y, sec1Width);
+
     y = tablaCeldas([
         ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`.toUpperCase()],
         ['CURP', data.curp],
-        ['Sexo / Fecha Nac.', `${data.sexo} | ${data.fecha_nacimiento}`],
-        ['Teléfono', data.telefono],
+        ['Sexo', data.sexo],
+        ['Fecha de Nacimiento', data.fecha_nacimiento],
+    ], y, sec1Width);
+
+    // Bajar para que no choque con la foto
+    if (y < headerH + 6 + 18 + photoH + 2) {
+        y = headerH + 6 + 18 + photoH + 2;
+    }
+
+    y = tablaCeldas([
+        ['Teléfono de Contacto', data.telefono],
         ['Correo Electrónico', data.correo],
-        ['Lugar de Nacimiento', data.lugar_nacimiento],
         ['Estado Civil', data.estado_civil],
-        ['Domicilio Completo', `${data.domicilio}, Col. ${data.colonia}, ${data.municipio}, C.P. ${data.codigo_postal}`],
+        ['Lugar de Nacimiento', data.lugar_nacimiento],
+        ['Domicilio (Calle y Nº)', data.domicilio],
+        ['Colonia', data.colonia],
+        ['Municipio', data.municipio],
+        ['Código Postal', data.codigo_postal],
     ], y);
 
     // ── SEC 2: SELECCIÓN ACADÉMICA ──────────────────────────
     y = seccionHeader('2. CARRERAS TÉCNICAS SELECCIONADAS', y);
     const carreraRows = [['PRIMERA OPCIÓN', (data.carrera_nombre || '').toUpperCase()]];
-    if (data.segunda_opcion_carrera) {
-        carreraRows.push(['SEGUNDA OPCIÓN', (data.segunda_opcion_carrera).toUpperCase()]);
-    }
-    if (data.tercera_opcion_carrera) {
-        carreraRows.push(['TERCERA OPCIÓN', (data.tercera_opcion_carrera).toUpperCase()]);
-    }
+    if (data.segunda_opcion_carrera) carreraRows.push(['SEGUNDA OPCIÓN', (data.segunda_opcion_carrera).toUpperCase()]);
+    if (data.tercera_opcion_carrera) carreraRows.push(['TERCERA OPCIÓN', (data.tercera_opcion_carrera).toUpperCase()]);
     y = tablaCeldas(carreraRows, y);
 
     // ── SEC 3: ANTECEDENTES ESCOLARES ────────────────────────
     y = seccionHeader('3. ESCUELA DE PROCEDENCIA', y);
     y = tablaCeldas([
         ['Nombre de la Escuela', data.escuela_nombre],
-        ['Subsistema / Municipio', `${data.escuela_tipo} | ${data.escuela_municipio}`],
+        ['Tipo de Subsistema', data.escuela_tipo],
+        ['Municipio de la Escuela', data.escuela_municipio],
         ['Promedio General', `${data.promedio_general} / 10.0`],
     ], y);
 
@@ -146,27 +157,29 @@ export async function generarFichaPDF(data) {
     y = seccionHeader('4. DATOS DEL PADRE, MADRE O TUTOR LEGAL', y);
     y = tablaCeldas([
         ['Nombre Completo', data.tutor_nombre],
-        ['Parentesco / CURP', `${data.tutor_parentesco} | ${data.tutor_curp}`],
-        ['Ocupación / Grado Estudio', `${data.tutor_ocupacion} | ${data.tutor_grado_estudios}`],
+        ['Parentesco', data.tutor_parentesco],
+        ['CURP del Tutor', data.tutor_curp],
+        ['Ocupación', data.tutor_ocupacion],
+        ['Grado Máximo de Estudios', data.tutor_grado_estudios],
         ['Teléfono de Contacto', data.tutor_telefono],
     ], y);
 
     // ── PIE DE PÁGINA ─────────────────────────────────────
     const pH = doc.internal.pageSize.getHeight();
     doc.setFillColor(...colorVerde);
-    doc.rect(0, pH - 14, W, 14, 'F');
+    doc.rect(0, pH - 12, W, 12, 'F');
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(255, 255, 255);
     doc.text(
         'CBTa 134 \u00B7 Este documento no tiene validez oficial sin sello de la institución y firmas originales.',
-        W / 2, pH - 7.5,
+        W / 2, pH - 6.5,
         { align: 'center' }
     );
     doc.setFontSize(7.5);
-    doc.text(`Folio de Pre-Registro: ${data.folio}`, margin, pH - 4);
-    doc.text(`Documento generado electrónicamente el ${new Date().toLocaleDateString()}`, W - margin, pH - 4, { align: 'right' });
+    doc.text(`Folio de Pre-Registro: ${data.folio}`, margin, pH - 3);
+    doc.text(`Documento generado el ${new Date().toLocaleDateString()}`, W - margin, pH - 3, { align: 'right' });
 
     return doc.output('blob');
 }
