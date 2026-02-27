@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 /**
  * Genera la Ficha de Pre-Registro en PDF (una sola página completa).
+ * Sin firmas, con espacio para foto y layout optimizado.
  *
  * @param {Object} data - Datos del registro completo
  * @returns {Blob} PDF como Blob
@@ -18,14 +19,13 @@ export async function generarFichaPDF(data) {
     const colorGris = [245, 245, 245];
     const colorTexto = [30, 30, 30];
     const colorGrisMedio = [100, 100, 100];
+    const BN = [255, 255, 255];
 
     // ── ENCABEZADO ────────────────────────────────────────
-    // Borde superior verde (empezando desde 0 ahora)
     doc.setFillColor(...colorVerde);
     doc.rect(0, 0, W, 32, 'F');
 
-    // Logo placeholder (cuadro blanco en esquina)
-    const BN = [255, 255, 255];
+    // Logo
     doc.setFillColor(...BN);
     doc.roundedRect(margin, 6, 20, 20, 2, 2, 'F');
     doc.setFontSize(7);
@@ -44,7 +44,6 @@ export async function generarFichaPDF(data) {
     doc.setFont('helvetica', 'normal');
     doc.text('FICHA DE PRE-REGISTRO DE NUEVO INGRESO', W / 2, 23, { align: 'center' });
 
-    // Ciclo escolar
     const anio = new Date().getFullYear();
     doc.setFontSize(8.5);
     doc.text(`Ciclo Escolar ${anio}\u2013${anio + 1}`, W / 2, 29, { align: 'center' });
@@ -56,21 +55,35 @@ export async function generarFichaPDF(data) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...colorVerde);
-    doc.text(`FOLIO: ${data.folio}`, margin + 5, y + 5);
+    doc.text(`FOLIO: ${data.folio}`, margin + 5, y + 7.5);
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(...colorGrisMedio);
-    doc.text(
-        `Fecha: ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}`,
-        W - margin - 5, y + 5,
-        { align: 'right' }
-    );
-    y += 16;
+    const fechaActual = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    doc.text(`Fecha de emisión: ${fechaActual}`, W - margin - 5, y + 7.5, { align: 'right' });
+
+    y += 18;
+
+    // ── RECUADRO PARA FOTO ────────────────────────────────
+    // Ubicado a la derecha de la primera sección
+    const photoW = 30;
+    const photoH = 35;
+    const photoX = W - margin - photoW;
+    const photoY = y + 2;
+
+    doc.setDrawColor(...colorGrisMedio);
+    doc.setLineWidth(0.3);
+    doc.rect(photoX, photoY, photoW, photoH, 'S');
+    doc.setFontSize(8);
+    doc.setTextColor(...colorGrisMedio);
+    doc.text('FOTO AQUÍ', photoX + photoW / 2, photoY + photoH / 2, { align: 'center' });
 
     // ── SECCIÓN HELPER ────────────────────────────────────
-    const seccionHeader = (titulo, yPos) => {
+    const seccionHeader = (titulo, yPos, customWidth) => {
+        const width = customWidth || (W - margin * 2);
         doc.setFillColor(...colorVerde);
-        doc.rect(margin, yPos, W - margin * 2, 7, 'F');
+        doc.rect(margin, yPos, width, 7, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(255, 255, 255);
@@ -78,54 +91,59 @@ export async function generarFichaPDF(data) {
         return yPos + 8;
     };
 
-    const tablaCeldas = (body, yPos) => {
+    const tablaCeldas = (body, yPos, customWidth) => {
+        const width = customWidth || (W - margin * 2);
         autoTable(doc, {
             body,
             startY: yPos,
-            margin: { left: margin, right: margin },
+            margin: { left: margin, right: W - (margin + width) },
             theme: 'grid',
             styles: {
                 fontSize: 8,
-                cellPadding: { top: 1.2, bottom: 1.2, left: 3, right: 3 },
+                cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
                 textColor: colorTexto,
             },
             columnStyles: {
-                0: { fontStyle: 'bold', fillColor: [230, 245, 235], cellWidth: 50 },
+                0: { fontStyle: 'bold', fillColor: [230, 245, 235], cellWidth: width * 0.35 },
                 1: { cellWidth: 'auto' },
             },
             alternateRowStyles: { fillColor: [250, 252, 250] },
         });
-        return doc.lastAutoTable.finalY + 3;
+        return doc.lastAutoTable.finalY + 4;
     };
 
     // ── SEC 1: DATOS PERSONALES ───────────────────────────
-    y = seccionHeader('1. DATOS DEL ASPIRANTE', y);
+    // Esta sección es más estrecha para dejar espacio a la foto
+    const sec1Width = (W - margin * 2) - photoW - 5;
+    y = seccionHeader('1. DATOS DEL ASPIRANTE', y, sec1Width);
+
+    // Ajustamos los datos para que quepan en el ancho reducido
     y = tablaCeldas([
         ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`],
         ['CURP', data.curp],
         ['Sexo', data.sexo],
-        ['Fecha de Nacimiento', data.fecha_nacimiento],
-        ['Correo Electrónico', data.correo],
-        ['Estado Civil', data.estado_civil],
+        ['Fecha Nac.', data.fecha_nacimiento],
         ['Teléfono', data.telefono],
-        ['Lugar de Nacimiento', data.lugar_nacimiento],
-        ['Domicilio', data.domicilio],
-        ['Colonia', data.colonia],
-        ['Municipio', data.municipio],
-        ['Código Postal', data.codigo_postal],
+        ['Correo', data.correo],
+    ], y, sec1Width);
+
+    // Si la tabla terminó antes que la foto, bajamos y para que lo siguiente no choque
+    if (y < photoY + photoH + 5) {
+        y = photoY + photoH + 5;
+    }
+
+    // El resto de los datos personales que no cabían al lado de la foto
+    y = tablaCeldas([
+        ['Estado Civil', data.estado_civil],
+        ['Lugar Nacimiento', data.lugar_nacimiento],
+        ['Domicilio', `${data.domicilio}, Col. ${data.colonia}, ${data.municipio}, C.P. ${data.codigo_postal}`],
     ], y);
 
     // ── SEC 2: CARRERA(S) ──────────────────────────────────
     y = seccionHeader('2. CARRERAS TÉCNICAS SELECCIONADAS', y);
-    const carreraRows = [
-        ['1ª Opción de Carrera', data.carrera_nombre],
-    ];
-    if (data.segunda_opcion_carrera) {
-        carreraRows.push(['2ª Opción de Carrera', data.segunda_opcion_carrera]);
-    }
-    if (data.tercera_opcion_carrera) {
-        carreraRows.push(['3ª Opción de Carrera', data.tercera_opcion_carrera]);
-    }
+    const carreraRows = [['1ª Opción', data.carrera_nombre]];
+    if (data.segunda_opcion_carrera) carreraRows.push(['2ª Opción', data.segunda_opcion_carrera]);
+    if (data.tercera_opcion_carrera) carreraRows.push(['3ª Opción', data.tercera_opcion_carrera]);
     y = tablaCeldas(carreraRows, y);
 
     // ── SEC 3: ESCUELA ────────────────────────────────────
@@ -148,31 +166,11 @@ export async function generarFichaPDF(data) {
         ['Teléfono', data.tutor_telefono],
     ], y);
 
-    // ── FIRMAS ────────────────────────────────────────────
-    y += 4;
-    const sigW = (W - margin * 2 - 10) / 2;
-
-    // Aspirante
-    doc.setDrawColor(...colorGrisMedio);
-    doc.line(margin, y + 10, margin + sigW, y + 10);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...colorGrisMedio);
-    doc.text('Firma del Aspirante', margin + sigW / 2, y + 14, { align: 'center' });
-    doc.text(`${data.nombre} ${data.apellido_paterno}`, margin + sigW / 2, y + 18, { align: 'center' });
-
-    // Tutor
-    const sig2X = margin + sigW + 10;
-    doc.line(sig2X, y + 10, sig2X + sigW, y + 10);
-    doc.text('Firma del Padre / Tutor', sig2X + sigW / 2, y + 14, { align: 'center' });
-    doc.text(data.tutor_nombre, sig2X + sigW / 2, y + 18, { align: 'center' });
-
     // ── PIE DE PÁGINA ─────────────────────────────────────
     const pH = doc.internal.pageSize.getHeight();
     doc.setFillColor(...colorVerde);
     doc.rect(0, pH - 12, W, 12, 'F');
 
-    // Info institucional
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(255, 255, 255);
