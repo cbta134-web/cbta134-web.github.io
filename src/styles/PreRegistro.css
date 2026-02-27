@@ -5,19 +5,19 @@
 
 /* ── Variables ─────────────────────────────────── */
 :root {
-  --pr-verde:       #046638;
-  --pr-verde-dark:  #034d2a;
+  --pr-verde: #046638;
+  --pr-verde-dark: #034d2a;
   --pr-verde-light: #e6f5eb;
-  --pr-oro:         #d4af37;
-  --pr-bg:          #f4f7f4;
-  --pr-white:       #ffffff;
-  --pr-text:        #1e1e1e;
-  --pr-muted:       #6b7280;
-  --pr-border:      #d1d5db;
-  --pr-error:       #dc2626;
-  --pr-success:     #16a34a;
-  --pr-radius:      12px;
-  --pr-shadow:      0 4px 24px rgba(4,102,56,.12);
+  --pr-oro: #d4af37;
+  --pr-bg: #f4f7f4;
+  --pr-white: #ffffff;
+  --pr-text: #1e1e1e;
+  --pr-muted: #6b7280;
+  --pr-border: #d1d5db;
+  --pr-error: #dc2626;
+  --pr-success: #16a34a;
+  --pr-radius: 12px;
+  --pr-shadow: 0 4px 24px rgba(4, 102, 56, .12);
 }
 
 /* ── Wrapper principal ──────────────────────────── */
@@ -45,7 +45,12 @@
   pointer-events: none;
 }
 
-.prereg-hero__content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+.prereg-hero__content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+  margin: 0 auto;
+}
 
 .prereg-hero__badge {
   display: inline-block;
@@ -69,7 +74,7 @@
 }
 
 .prereg-hero__subtitle {
-  color: rgba(255,255,255,.8);
+  color: rgba(255, 255, 255, .8);
   font-size: 1rem;
   margin: 0;
 }
@@ -108,7 +113,9 @@
   z-index: 0;
 }
 
-.prereg-step.done:not(:last-child)::after { background: var(--pr-verde); }
+.prereg-step.done:not(:last-child)::after {
+  background: var(--pr-verde);
+}
 
 .prereg-step__circle {
   width: 36px;
@@ -129,7 +136,7 @@
   background: var(--pr-verde);
   border-color: var(--pr-verde);
   color: #fff;
-  box-shadow: 0 0 0 4px rgba(4,102,56,.18);
+  box-shadow: 0 0 0 4px rgba(4, 102, 56, .18);
 }
 
 .prereg-step.done .prereg-step__circle {
@@ -146,8 +153,13 @@
   line-height: 1.2;
 }
 
-.prereg-step.active .prereg-step__label { color: var(--pr-verde); }
-.prereg-step.done  .prereg-step__label  { color: var(--pr-success); }
+.prereg-step.active .prereg-step__label {
+  color: var(--pr-verde);
+}
+
+.prereg-step.done .prereg-step__label {
+  color: var(--pr-success);
+}
 
 /* ── Contenedor del form ───────────────────────── */
 .prereg-form-container {
@@ -168,8 +180,15 @@
 }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .prereg-section__title {
@@ -195,13 +214,26 @@
 }
 
 /* ── Grids de formulario ───────────────────────── */
-.form-grid { display: grid; gap: 1rem; margin-bottom: 1rem; }
-.form-grid--2 { grid-template-columns: repeat(2, 1fr); }
-.form-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.form-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
 
 @media (max-width: 600px) {
+
   .form-grid--2,
-  .form-grid--3 { grid-template-columns: 1fr; }
+  .form-grid--3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Campos ────────────────────────────────────── */
@@ -218,7 +250,10 @@
   color: var(--pr-text);
 }
 
-.required { color: var(--pr-error); margin-left: .15rem; }
+.required {
+  color: var(--pr-error);
+  margin-left: .15rem;
+}
 
 .form-input {
   width: 100%;
@@ -235,11 +270,16 @@
 
 .form-input:focus {
   border-color: var(--pr-verde);
-  box-shadow: 0 0 0 3px rgba(4,102,56,.12);
+  box-shadow: 0 0 0 3px rgba(4, 102, 56, .12);
 }
 
-.form-select { cursor: pointer; }
-.input-error  { border-color: var(--pr-error) !important; }
+.form-select {
+  cursor: pointer;
+}
+
+.input-error {
+  border-color: var(--pr-error) !important;
+}
 
 .field-error {
   font-size: .75rem;
@@ -273,16 +313,18 @@
   border-color: var(--pr-verde);
   background: var(--pr-verde-light);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(4,102,56,.12);
+  box-shadow: 0 6px 16px rgba(4, 102, 56, .12);
 }
 
 .carrera-card.selected {
   border-color: var(--pr-verde);
   background: var(--pr-verde-light);
-  box-shadow: 0 0 0 3px rgba(4,102,56,.2);
+  box-shadow: 0 0 0 3px rgba(4, 102, 56, .2);
 }
 
-.carrera-card__icon { font-size: 2rem; }
+.carrera-card__icon {
+  font-size: 2rem;
+}
 
 .carrera-card__name {
   font-size: .78rem;
@@ -315,8 +357,13 @@
   transition: background .15s;
 }
 
-.confirm-table__row:last-child { border-bottom: none; }
-.confirm-table__row:hover { background: var(--pr-verde-light); }
+.confirm-table__row:last-child {
+  border-bottom: none;
+}
+
+.confirm-table__row:hover {
+  background: var(--pr-verde-light);
+}
 
 .confirm-table__label {
   width: 42%;
@@ -365,23 +412,40 @@
   background: var(--pr-verde);
   color: #fff;
 }
-.btn-primary:hover { background: var(--pr-verde-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(4,102,56,.3); }
+
+.btn-primary:hover {
+  background: var(--pr-verde-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(4, 102, 56, .3);
+}
 
 .btn-secondary {
   background: var(--pr-white);
   color: var(--pr-verde);
   border: 2px solid var(--pr-verde);
 }
-.btn-secondary:hover { background: var(--pr-verde-light); }
+
+.btn-secondary:hover {
+  background: var(--pr-verde-light);
+}
 
 .btn-success {
   background: linear-gradient(135deg, var(--pr-verde) 0%, #0a7a44 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(4,102,56,.3);
+  box-shadow: 0 4px 14px rgba(4, 102, 56, .3);
 }
-.btn-success:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(4,102,56,.4); }
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(4, 102, 56, .4);
+}
+
 .btn-success:disabled,
-.btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+.btn-primary:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+  transform: none;
+}
 
 /* ── Pantalla de éxito ─────────────────────────── */
 .prereg-success {
@@ -438,4 +502,142 @@
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+/* ── Modern Success UI Animations ────────────────── */
+@keyframes float-particle {
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  33% {
+    transform: translate(15px, -15px) rotate(10deg);
+  }
+
+  66% {
+    transform: translate(-10px, 20px) rotate(-10deg);
+  }
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(16, 185, 129, 0));
+  }
+
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 10px 15px rgba(16, 185, 129, 0.3));
+  }
+}
+
+@keyframes icon-3d {
+  0% {
+    transform: perspective(500px) rotateY(0deg) rotateX(0deg);
+  }
+
+  50% {
+    transform: perspective(500px) rotateY(15deg) rotateX(10deg);
+  }
+
+  100% {
+    transform: perspective(500px) rotateY(0deg) rotateX(0deg);
+  }
+}
+
+@keyframes paper-move {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(25px);
+    opacity: 0;
+  }
+}
+
+@keyframes wave {
+
+  0%,
+  100% {
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  }
+
+  33% {
+    border-radius: 60% 40% 50% 50% / 50% 30% 70% 40%;
+  }
+
+  66% {
+    border-radius: 50% 50% 30% 70% / 70% 60% 40% 60%;
+  }
+}
+
+.animate-float-particle {
+  animation: float-particle 8s infinite ease-in-out;
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradient-flow 15s infinite ease;
+}
+
+.animate-pulse-icon {
+  animation: pulse-soft 4s infinite ease-in-out;
+}
+
+.animate-3d {
+  animation: icon-3d 5s infinite ease-in-out;
+}
+
+.animate-paper {
+  animation: paper-move 2.5s infinite ease-in-out;
+}
+
+.animate-wave {
+  animation: wave 10s infinite ease-in-out;
+}
+
+.instruction-card {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.instruction-card:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 25px 50px -12px rgba(6, 95, 70, 0.15);
+}
+
+.instruction-card:hover .glow-effect {
+  opacity: 1;
+}
+
+.glow-effect {
+  pointer-events: none;
+  transition: opacity 0.7s;
 }
