@@ -15,7 +15,7 @@ export async function generarFichaPDF(data) {
 
     // ── Colores institucionales ───────────────────────────
     const colorVerde = [4, 102, 56];   // #046638  CBTa verde
-    const color Oro = [212, 175, 55];   // #D4AF37
+    const colorOro = [212, 175, 55];   // #D4AF37
     const colorGris = [245, 245, 245];
     const colorTexto = [30, 30, 30];
     const colorGrisMedio = [100, 100, 100];
