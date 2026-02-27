@@ -25,7 +25,6 @@ export async function generarFichaPDF(data) {
     doc.rect(0, 0, W, 32, 'F');
 
     // Logo placeholder (cuadro blanco en esquina)
-    doc.setFillColor(BN[0], BN[1], BN[2]); // blanco
     const BN = [255, 255, 255];
     doc.setFillColor(...BN);
     doc.roundedRect(margin, 6, 20, 20, 2, 2, 'F');
