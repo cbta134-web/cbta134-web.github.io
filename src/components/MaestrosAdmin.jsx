@@ -5,7 +5,6 @@ import AddClubModal from './AddClubModal';
 import AddCareerModal from './AddCareerModal';
 import ChatbotPrompt from './ChatbotPrompt';
 import * as XLSX from 'xlsx';
-import { generarFichasPDFMasivo } from '../utils/pdfGenerator';
 
 const MaestrosAdmin = () => {
     const navigate = useNavigate();
@@ -724,23 +723,6 @@ const MaestrosAdmin = () => {
 
         const fileName = `PreRegistros_${yearLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
-    };
-
-    // Exportar fichas de pre-registros filtrados como PDF (ORIGINAL + COPIA por página)
-    const [exportingPDF, setExportingPDF] = useState(false);
-    const exportPreregistrosPDF = async () => {
-        const filtered = getFilteredPreregistros();
-        if (filtered.length === 0) {
-            alert('No hay pre-registros para exportar con los filtros seleccionados.');
-            return;
-        }
-        const yearLabel = preregFilterYear === 'Todos' ? 'Todos' : preregFilterYear;
-        setExportingPDF(true);
-        try {
-            await generarFichasPDFMasivo(filtered, yearLabel);
-        } finally {
-            setExportingPDF(false);
-        }
     };
 
     const fetchPreregistroConfig = async () => {
@@ -6262,21 +6244,13 @@ const MaestrosAdmin = () => {
                                                         ))}
                                                     </select>
                                                 </div>
-                                                <div className="flex flex-col gap-2">
+                                                <div>
                                                     <button
                                                         onClick={exportPreregistrosExcel}
-                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-[1.02] text-sm"
+                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-[1.02]"
                                                     >
-                                                        <span className="material-symbols-outlined text-sm">table_view</span>
+                                                        <span className="material-symbols-outlined">table_view</span>
                                                         <span>Descargar Excel</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={exportPreregistrosPDF}
-                                                        disabled={exportingPDF}
-                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 hover:shadow-red-300 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-                                                    >
-                                                        <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-                                                        <span>{exportingPDF ? 'Generando PDF...' : 'Descargar PDF'}</span>
                                                     </button>
                                                 </div>
                                             </div>

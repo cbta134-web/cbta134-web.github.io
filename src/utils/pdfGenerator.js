@@ -1,259 +1,277 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// ── Colores institucionales ──────────────────────────────────
-const colorVerde = [4, 102, 56];   // #046638  CBTa verde
-const colorOro = [212, 175, 55]; // #D4AF37
-const colorGris = [245, 245, 245];
-const colorTexto = [30, 30, 30];
-const colorGrisMedio = [100, 100, 100];
+// ─── Paleta institucional ────────────────────────────────────
+const VERDE = [4, 102, 56];
+const DORADO = [190, 150, 20];
+const VERDE_CLR = [230, 245, 236];
+const GRIS_BG = [244, 246, 244];
+const TEXTO = [22, 22, 22];
+const GRIS_M = [105, 105, 105];
+
+// Ancho efectivo de columnas en tabla 4-col (margin=11mm cada lado)
+// Tabla width = 215.9 - 22 = 193.9mm
+// col0=key1: 30mm  col1=val1: auto  col2=key2: 30mm  col3=val2: auto
+const M = 11; // margen izq/der
 
 /**
- * Dibuja UNA copia de la ficha dentro del doc, comenzando en offsetY.
- * La "copia" se dibuja en el espacio vertical [offsetY, offsetY + altoCopia].
- *
- * @param {jsPDF} doc
- * @param {Object} data   - datos del pre-registro
- * @param {number} offsetY - coordenada Y donde empieza la copia
- * @param {number} altoCopia - altura disponible para esta copia (mm)
- * @param {string} etiqueta - "ORIGINAL" | "COPIA"
+ * Dibuja una ficha completa en la mitad vertical del documento.
+ * @param {jsPDF}  doc
+ * @param {Object} d          datos del pre-registro
+ * @param {number} oy         offsetY (0 = ORIGINAL, H/2 = COPIA)
+ * @param {number} h          altura disponible (H/2)
+ * @param {string} etiqueta   "ORIGINAL" | "COPIA"
  */
-function dibujarFicha(doc, data, offsetY, altoCopia, etiqueta) {
-    const W = doc.internal.pageSize.getWidth(); // 215.9
-    const margin = 12;
-    let y = offsetY;
+function dibujarFicha(doc, d, oy, h, etiqueta) {
+    const W = doc.internal.pageSize.getWidth();
+    let y = oy;
 
-    // ── Etiqueta formato (arriba del encabezado) ──────────────
-    doc.setFillColor(212, 175, 55);          // dorado
-    doc.rect(0, y, W, 5, 'F');
+    // ── 1. Barra dorada de identificación (4.5 mm) ───────────
+    doc.setFillColor(...DORADO);
+    doc.rect(0, y, W, 4.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(6.5);
+    doc.setTextColor(255, 255, 255);
     doc.text(
-        `FORMATO DE FICHA DE PRE-REGISTRO  ·  ${etiqueta}`,
-        W / 2, y + 3.5,
+        `◆  FORMATO DE FICHA DE PRE-REGISTRO  —  ${etiqueta}  ◆`,
+        W / 2, y + 3.1,
         { align: 'center' }
     );
-    y += 5;
+    y += 4.5;
 
-    // ── ENCABEZADO verde ──────────────────────────────────────
-    doc.setFillColor(...colorVerde);
-    doc.rect(0, y, W, 26, 'F');
+    // ── 2. Encabezado institucional verde (19 mm) ─────────────
+    doc.setFillColor(...VERDE);
+    doc.rect(0, y, W, 19, 'F');
 
-    // Logo cuadro blanco
+    // Cuadro logo blanco
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin, y + 4, 16, 16, 2, 2, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...colorVerde);
+    doc.roundedRect(M, y + 2.5, 14, 14, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text('CBTa\n134', margin + 8, y + 10, { align: 'center', lineHeightFactor: 1.5 });
+    doc.setFontSize(5.8);
+    doc.setTextColor(...VERDE);
+    doc.text('CBTa\n134', M + 7, y + 8, { align: 'center', lineHeightFactor: 1.5 });
 
-    // Título
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CENTRO DE BACHILLERATO TECNOLÓGICO', W / 2, y + 8, { align: 'center' });
-    doc.text('AGROPECUARIO No. 134', W / 2, y + 14, { align: 'center' });
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('FICHA DE PRE-REGISTRO DE NUEVO INGRESO', W / 2, y + 20, { align: 'center' });
-
-    // Ciclo escolar
-    const anio = new Date().getFullYear();
-    doc.setFontSize(7.5);
-    doc.text(`Ciclo Escolar ${anio}–${anio + 1}`, W / 2, y + 25, { align: 'center' });
-    y += 26;
-
-    // ── FOLIO Y FECHA ─────────────────────────────────────────
-    doc.setFillColor(...colorGris);
-    doc.roundedRect(margin, y + 2, W - margin * 2, 10, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.setTextColor(...colorVerde);
-    doc.text(`FOLIO: ${data.folio || '—'}`, margin + 4, y + 8.5);
-    doc.setFont('helvetica', 'normal');
+    doc.text('CENTRO DE BACHILLERATO TECNOLÓGICO AGROPECUARIO No. 134', W / 2, y + 7, { align: 'center' });
     doc.setFontSize(7.5);
-    doc.setTextColor(...colorGrisMedio);
-    const fechaReg = data.created_at
-        ? new Date(data.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-    doc.text(`Fecha: ${fechaReg}`, W - margin - 4, y + 8.5, { align: 'right' });
-    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.text('FICHA DE PRE-REGISTRO DE NUEVO INGRESO', W / 2, y + 12.5, { align: 'center' });
+    const anio = new Date().getFullYear();
+    doc.setFontSize(6.5);
+    doc.text(`Ciclo Escolar ${anio} – ${anio + 1}`, W / 2, y + 17, { align: 'center' });
+    y += 19;
 
-    // ── HELPERS LOCALES ───────────────────────────────────────
-    const seccionHeader = (titulo, yPos) => {
-        doc.setFillColor(...colorVerde);
-        doc.rect(margin, yPos, W - margin * 2, 6, 'F');
+    // ── 3. Barra folio / fecha (9.5 mm) ──────────────────────
+    doc.setFillColor(...GRIS_BG);
+    doc.rect(0, y, W, 9.5, 'F');
+
+    // Franja verde izquierda del folio
+    doc.setFillColor(...VERDE);
+    doc.rect(M, y, 42, 9.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`FOLIO: ${d.folio || '—'}`, M + 3, y + 6.3);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...GRIS_M);
+    const fechaReg = d.created_at
+        ? new Date(d.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    doc.text(`Fecha de registro: ${fechaReg}`, W - M - 2, y + 6.3, { align: 'right' });
+    y += 11;
+
+    // ── Helpers de layout ────────────────────────────────────
+
+    /** Encabezado de sección verde compacto (5 mm) */
+    const sHead = (titulo, yPos) => {
+        doc.setFillColor(...VERDE);
+        doc.rect(M, yPos, W - M * 2, 5, 'F');
+        // Separador dorado izquierdo
+        doc.setFillColor(...DORADO);
+        doc.rect(M, yPos, 2.5, 5, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         doc.setTextColor(255, 255, 255);
-        doc.text(titulo, margin + 3, yPos + 4.3);
-        return yPos + 7;
+        doc.text(titulo, M + 6, yPos + 3.4);
+        return yPos + 5.5;
     };
 
-    const tablaCeldas = (body, yPos) => {
+    /** Tabla de 2 col: [etiqueta, valor] */
+    const t2 = (rows, yPos) => {
         autoTable(doc, {
-            body,
+            body: rows,
             startY: yPos,
-            margin: { left: margin, right: margin },
+            margin: { left: M, right: M },
             theme: 'grid',
             styles: {
-                fontSize: 7.5,
-                cellPadding: { top: 1.2, bottom: 1.2, left: 2.5, right: 2.5 },
-                textColor: colorTexto,
+                fontSize: 7,
+                cellPadding: { top: 0.9, bottom: 0.9, left: 2, right: 2 },
+                textColor: TEXTO,
+                lineColor: [210, 220, 210],
+                lineWidth: 0.2,
             },
             columnStyles: {
-                0: { fontStyle: 'bold', fillColor: [230, 245, 235], cellWidth: 48 },
+                0: { fontStyle: 'bold', fillColor: VERDE_CLR, cellWidth: 34 },
                 1: { cellWidth: 'auto' },
             },
-            alternateRowStyles: { fillColor: [250, 252, 250] },
+            alternateRowStyles: { fillColor: [249, 252, 250] },
         });
-        return doc.lastAutoTable.finalY + 3;
+        return doc.lastAutoTable.finalY + 1.5;
     };
 
-    // ── SEC 1: DATOS PERSONALES ───────────────────────────────
-    y = seccionHeader('1. DATOS DEL ASPIRANTE', y);
-    y = tablaCeldas([
-        ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`],
-        ['CURP', data.curp],
-        ['Sexo', data.sexo],
-        ['Fec. Nacimiento', data.fecha_nacimiento],
-        ['Correo', data.correo],
-        ['Estado Civil', data.estado_civil],
-        ['Teléfono', data.telefono],
-        ['Lugar Nacimiento', data.lugar_nacimiento],
-        ['Domicilio', `${data.domicilio}, Col. ${data.colonia}, ${data.municipio} C.P. ${data.codigo_postal}`],
+    /** Tabla de 4 col: [key1, val1, key2, val2] */
+    const t4 = (rows, yPos) => {
+        autoTable(doc, {
+            body: rows,
+            startY: yPos,
+            margin: { left: M, right: M },
+            theme: 'grid',
+            styles: {
+                fontSize: 7,
+                cellPadding: { top: 0.9, bottom: 0.9, left: 2, right: 2 },
+                textColor: TEXTO,
+                lineColor: [210, 220, 210],
+                lineWidth: 0.2,
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold', fillColor: VERDE_CLR, cellWidth: 28 },
+                1: { cellWidth: 'auto' },
+                2: { fontStyle: 'bold', fillColor: VERDE_CLR, cellWidth: 28 },
+                3: { cellWidth: 'auto' },
+            },
+            alternateRowStyles: { fillColor: [249, 252, 250] },
+        });
+        return doc.lastAutoTable.finalY + 1.5;
+    };
+
+    // ── Sección 1: Datos del Aspirante ───────────────────────
+    y = sHead('1.  DATOS DEL ASPIRANTE', y);
+
+    // Nombre completo en fila ancha
+    y = t2([
+        ['Nombre Completo', `${d.nombre || ''} ${d.apellido_paterno || ''} ${d.apellido_materno || ''}`.trim()],
     ], y);
 
-    // ── SEC 2: CARRERA(S) ─────────────────────────────────────
-    y = seccionHeader('2. CARRERAS TÉCNICAS SELECCIONADAS', y);
-    const carreraRows = [['1ª Opción', data.carrera_nombre]];
-    if (data.segunda_opcion_carrera) carreraRows.push(['2ª Opción', data.segunda_opcion_carrera]);
-    if (data.tercera_opcion_carrera) carreraRows.push(['3ª Opción', data.tercera_opcion_carrera]);
-    y = tablaCeldas(carreraRows, y);
-
-    // ── SEC 3: ESCUELA ────────────────────────────────────────
-    y = seccionHeader('3. ESCUELA DE PROCEDENCIA', y);
-    y = tablaCeldas([
-        ['Tipo', data.escuela_tipo],
-        ['Nombre', data.escuela_nombre],
-        ['Municipio', data.escuela_municipio],
-        ['Promedio', `${data.promedio_general} / 10`],
+    // Datos en 4 columnas
+    y = t4([
+        ['CURP', d.curp || '—', 'Sexo', d.sexo || '—'],
+        ['Fec. Nac.', d.fecha_nacimiento || '—', 'Estado Civil', d.estado_civil || '—'],
+        ['Teléfono', d.telefono || '—', 'Correo', d.correo || '—'],
+        ['Lugar Nac.', d.lugar_nacimiento || '—', 'Municipio', d.municipio || '—'],
     ], y);
 
-    // ── SEC 4: TUTOR ──────────────────────────────────────────
-    y = seccionHeader('4. PADRE / MADRE / TUTOR', y);
-    y = tablaCeldas([
-        ['Parentesco', data.tutor_parentesco],
-        ['Nombre', data.tutor_nombre],
-        ['CURP', data.tutor_curp],
-        ['Ocupación', data.tutor_ocupacion],
-        ['Grado Estudios', data.tutor_grado_estudios],
-        ['Teléfono', data.tutor_telefono],
+    // Domicilio completo en fila ancha
+    y = t2([
+        ['Domicilio', `${d.domicilio || ''}, Col. ${d.colonia || ''}, C.P. ${d.codigo_postal || ''}`],
     ], y);
 
-    // ── FIRMAS ────────────────────────────────────────────────
-    y += 4;
-    const sigW = (W - margin * 2 - 10) / 2;
+    // ── Sección 2: Carreras ──────────────────────────────────
+    y = sHead('2.  CARRERAS TÉCNICAS SELECCIONADAS', y);
+    const op2 = d.segunda_opcion_carrera;
+    const op3 = d.tercera_opcion_carrera;
+    if (op2 && op3) {
+        // Tres opciones: 1ª en fila ancha, 2ª y 3ª en 4-col
+        y = t2([['1ª Opción', d.carrera_nombre || '—']], y);
+        y = t4([['2ª Opción', op2, '3ª Opción', op3]], y);
+    } else if (op2) {
+        y = t4([['1ª Opción', d.carrera_nombre || '—', '2ª Opción', op2]], y);
+    } else {
+        y = t2([['1ª Opción', d.carrera_nombre || '—']], y);
+    }
 
-    doc.setDrawColor(...colorGrisMedio);
-    doc.line(margin, y + 12, margin + sigW, y + 12);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...colorGrisMedio);
-    doc.text('Firma del Aspirante', margin + sigW / 2, y + 16, { align: 'center' });
-    doc.text(`${data.nombre || ''} ${data.apellido_paterno || ''}`, margin + sigW / 2, y + 19.5, { align: 'center' });
+    // ── Sección 3: Escuela de Procedencia ───────────────────
+    y = sHead('3.  ESCUELA DE PROCEDENCIA', y);
+    y = t4([
+        ['Tipo', d.escuela_tipo || '—', 'Nombre', d.escuela_nombre || '—'],
+        ['Municipio', d.escuela_municipio || '—', 'Promedio', `${d.promedio_general || '—'} / 10`],
+    ], y);
 
-    const sig2X = margin + sigW + 10;
-    doc.line(sig2X, y + 12, sig2X + sigW, y + 12);
-    doc.text('Firma del Padre / Tutor', sig2X + sigW / 2, y + 16, { align: 'center' });
-    doc.text(data.tutor_nombre || '', sig2X + sigW / 2, y + 19.5, { align: 'center' });
+    // ── Sección 4: Tutor ─────────────────────────────────────
+    y = sHead('4.  PADRE / MADRE / TUTOR LEGAL', y);
+    y = t4([
+        ['Parentesco', d.tutor_parentesco || '—', 'Nombre', d.tutor_nombre || '—'],
+        ['CURP', d.tutor_curp || '—', 'Ocupación', d.tutor_ocupacion || '—'],
+        ['Grado Est.', d.tutor_grado_estudios || '—', 'Teléfono', d.tutor_telefono || '—'],
+    ], y);
 
-    // ── PIE ───────────────────────────────────────────────────
-    const pieY = offsetY + altoCopia - 10;
-    doc.setFillColor(...colorVerde);
-    doc.rect(0, pieY, W, 10, 'F');
+    // ── Firmas ───────────────────────────────────────────────
+    const pieY = oy + h - 9;          // pie ocupa últimos 9 mm
+    const firmaY = pieY - 17;           // espacio de firmas sobre el pie
+
+    const sigW = (W - M * 2 - 8) / 2;
+    doc.setDrawColor(...GRIS_M);
+    doc.setLineWidth(0.3);
+
+    // Firma aspirante
+    doc.line(M, firmaY + 11, M + sigW, firmaY + 11);
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRIS_M);
+    doc.text('Firma del Aspirante', M + sigW / 2, firmaY + 14.5, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${d.nombre || ''} ${d.apellido_paterno || ''}`.trim(), M + sigW / 2, firmaY + 17.5, { align: 'center' });
+
+    // Firma tutor
+    const sx2 = M + sigW + 8;
+    doc.line(sx2, firmaY + 11, sx2 + sigW, firmaY + 11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Firma del Padre / Tutor', sx2 + sigW / 2, firmaY + 14.5, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(d.tutor_nombre || '', sx2 + sigW / 2, firmaY + 17.5, { align: 'center' });
+
+    // ── Pie de página ─────────────────────────────────────────
+    doc.setFillColor(...VERDE);
+    doc.rect(0, pieY, W, 9, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
     doc.setTextColor(255, 255, 255);
     doc.text(
-        `${etiqueta}  ·  CBTa 134 · Documento de Pre-Registro · No tiene validez sin sello institucional`,
-        W / 2, pieY + 4,
+        `${etiqueta}  ·  CBTa 134  ·  No tiene validez sin sello institucional`,
+        W / 2, pieY + 3.8,
         { align: 'center' }
     );
-    doc.text(`Folio: ${data.folio || '—'}`, margin, pieY + 8);
-    doc.text(new Date().toLocaleDateString('es-MX'), W - margin, pieY + 8, { align: 'right' });
+    doc.setFontSize(5.8);
+    doc.text(`Folio: ${d.folio || '—'}`, M, pieY + 7.5);
+    doc.text(new Date().toLocaleDateString('es-MX'), W - M, pieY + 7.5, { align: 'right' });
 }
 
+// ─────────────────────────────────────────────────────────────
 /**
  * Genera la Ficha de Pre-Registro en PDF.
- * Imprime DOS copias en la misma página: ORIGINAL (arriba) y COPIA (abajo),
- * separadas por una línea punteada con la leyenda "✂ CUT".
+ * El PDF es de tamaño Carta (215.9 × 279.4 mm).
+ * La hoja se divide en DOS mitades horizontales:
+ *   – Mitad superior → ORIGINAL
+ *   – Mitad inferior → COPIA
+ * Separadas por una línea punteada de corte.
  *
- * @param {Object} data - Datos del registro completo
- * @returns {Blob} PDF como Blob
+ * @param {Object} data  Datos completos del pre-registro
+ * @returns {Blob}       PDF listo para descargar o abrir
  */
 export async function generarFichaPDF(data) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
-    const H = doc.internal.pageSize.getHeight(); // 279.4 mm (carta)
-    const W = doc.internal.pageSize.getWidth();  // 215.9 mm
-    const mitad = H / 2;
+    const H = doc.internal.pageSize.getHeight(); // 279.4
+    const W = doc.internal.pageSize.getWidth();  // 215.9
+    const mitad = H / 2;                             // 139.7
 
-    // ── Copia ORIGINAL (mitad superior) ──────────────────────
+    // ── ORIGINAL (mitad superior) ─────────────────────────────
     dibujarFicha(doc, data, 0, mitad, 'ORIGINAL');
 
-    // ── Línea separadora ──────────────────────────────────────
-    doc.setDrawColor(150, 150, 150);
-    doc.setLineDash([3, 2], 0);
-    doc.line(8, mitad, W - 8, mitad);
+    // ── Línea de corte ────────────────────────────────────────
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineDash([2.5, 1.5], 0);
+    doc.line(6, mitad, W - 6, mitad);
     doc.setLineDash([], 0);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(150, 150, 150);
-    doc.text('✂  Recorta aquí  ·  COPIA', W / 2, mitad - 1, { align: 'center' });
+    doc.setTextColor(160, 160, 160);
+    doc.text('✂   Recorte aquí y conserve la COPIA', W / 2, mitad + 3, { align: 'center' });
 
-    // ── Copia COPIA (mitad inferior) ─────────────────────────
+    // ── COPIA (mitad inferior) ────────────────────────────────
     dibujarFicha(doc, data, mitad, mitad, 'COPIA');
 
     return doc.output('blob');
-}
-
-/**
- * Genera UN solo PDF con las fichas de MÚLTIPLES pre-registros.
- * Cada pre-registro ocupa una página y se imprime con ORIGINAL + COPIA.
- *
- * @param {Array<Object>} registros - Array de objetos de pre-registro
- * @param {string|number} year      - Año para el nombre del archivo
- * @returns {void} Descarga el PDF directamente
- */
-export async function generarFichasPDFMasivo(registros, year) {
-    if (!registros || registros.length === 0) return;
-
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
-    const H = doc.internal.pageSize.getHeight();
-    const W = doc.internal.pageSize.getWidth();
-    const mitad = H / 2;
-
-    registros.forEach((data, idx) => {
-        if (idx > 0) doc.addPage();
-
-        // ORIGINAL (mitad superior)
-        dibujarFicha(doc, data, 0, mitad, 'ORIGINAL');
-
-        // Línea separadora
-        doc.setDrawColor(150, 150, 150);
-        doc.setLineDash([3, 2], 0);
-        doc.line(8, mitad, W - 8, mitad);
-        doc.setLineDash([], 0);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
-        doc.setTextColor(150, 150, 150);
-        doc.text('✂  Recorta aquí  ·  COPIA', W / 2, mitad - 1, { align: 'center' });
-
-        // COPIA (mitad inferior)
-        dibujarFicha(doc, data, mitad, mitad, 'COPIA');
-    });
-
-    const fileName = `Fichas_PreRegistro_${year}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
 }
