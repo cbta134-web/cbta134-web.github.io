@@ -43,9 +43,22 @@ function TarjetaEditable({ card, darkMode, onSave, onToggleVisibility, onDelete,
         const fileExt = file.name.split('.').pop();
         const fileName = `option-${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from('ui_media').upload(fileName, file, { upsert: true });
-        if (uploadError) { alert('Error subiendo: ' + uploadError.message); setUploading(false); return; }
+
+        if (uploadError) {
+            alert('Error subiendo: ' + uploadError.message);
+            setUploading(false);
+            return;
+        }
+
         const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
-        setForm(f => ({ ...f, image_url: publicUrl }));
+
+        // Actualizar el estado local
+        const updatedForm = { ...form, image_url: publicUrl };
+        setForm(updatedForm);
+
+        // Guardar automáticamente en la base de datos para evitar confusiones
+        await onSave(card.id, updatedForm);
+
         setUploading(false);
     };
 
@@ -211,11 +224,29 @@ function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
         setUploading(true);
         const fileExt = file.name.split('.').pop();
         const fileName = `hero-${Date.now()}.${fileExt}`;
-        const { error } = await supabase.storage.from('ui_media').upload(fileName, file, { upsert: true });
-        if (error) { alert('Error subiendo: ' + error.message); setUploading(false); return; }
+        const { error: uploadError } = await supabase.storage.from('ui_media').upload(fileName, file, { upsert: true });
+
+        if (uploadError) {
+            alert('Error subiendo: ' + uploadError.message);
+            setUploading(false);
+            return;
+        }
+
         const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
-        setNewUrl(publicUrl);
-        setFile(null);
+
+        // Guardar automáticamente en la base de datos
+        const { error: dbError } = await supabase
+            .from('hero_slides')
+            .update({ image_url: publicUrl })
+            .eq('id', slide.id);
+
+        if (dbError) {
+            alert('Error al actualizar base de datos: ' + dbError.message);
+        } else {
+            await onUpdate();
+            setReplacingImage(false);
+            setFile(null);
+        }
         setUploading(false);
     };
 

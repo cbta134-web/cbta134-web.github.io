@@ -16,6 +16,7 @@ const MaestrosAdmin = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [announcement, setAnnouncement] = useState({ titulo: '', contenido: '' });
     const [darkMode, setDarkMode] = useState(false);
