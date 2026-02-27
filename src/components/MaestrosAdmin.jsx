@@ -10,12 +10,12 @@ import AddCareerModal from './AddCareerModal';
 import ChatbotPrompt from './ChatbotPrompt';
 import * as XLSX from 'xlsx';
 import UiInterfazAdmin from './admin/UiInterfazAdmin';
+import AlumnosAdmin from './admin/AlumnosAdmin';
 
 const MaestrosAdmin = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [announcement, setAnnouncement] = useState({ titulo: '', contenido: '' });
     const [darkMode, setDarkMode] = useState(false);
@@ -4875,140 +4875,7 @@ const MaestrosAdmin = () => {
                         )}
 
                         {activeNav === 'alumnos' && (
-                            <>
-                                <section>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-bold flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-blue-800">layers</span> Gestión por Semestre
-                                        </h3>
-                                    </div>
-                                    <div className="flex overflow-x-auto lg:grid lg:grid-cols-6 gap-4 pb-4 lg:pb-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                        {[1, 2, 3, 4, 5, 6].map(sem => (
-                                            <div
-                                                key={sem}
-                                                onClick={() => {
-                                                    setSelectedSemesterFilter(sem);
-                                                    setViewLevel('groups');
-                                                }}
-                                                className={`flex-shrink-0 w-32 lg:w-full group p-6 rounded-3xl shadow-sm border cursor-pointer transition-all text-center ${darkMode
-                                                    ? 'bg-slate-800 border-slate-700 hover:border-blue-400'
-                                                    : 'bg-white border-slate-100 hover:border-blue-800'
-                                                    } ${selectedSemesterFilter === sem ? (darkMode ? 'border-blue-400' : 'border-blue-800') : ''}`}
-                                            >
-                                                <div className={`text-3xl font-black mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-800'}`}>{sem}°</div>
-                                                <div className={`text-[10px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-400 group-hover:text-blue-400' : 'text-slate-400 group-hover:text-blue-800'}`}>Semestre</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                {viewLevel === 'students' && selectedGroupFilter && (
-                                    <section>
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div>
-                                                <h3 className="text-lg font-bold">Alumnos - {selectedSemesterFilter}° Semestre, Grupo {selectedGroupFilter}</h3>
-                                                <button
-                                                    onClick={() => { setViewLevel('groups'); setSelectedGroupFilter(null); }}
-                                                    className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-800'} hover:underline`}
-                                                >
-                                                    ← Volver a grupos
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className={`rounded-3xl overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-white'} shadow-sm`}>
-                                            <table className="w-full">
-                                                <thead>
-                                                    <tr className={darkMode ? 'bg-slate-900' : 'bg-slate-50'}>
-                                                        <th className={`p-4 text-left font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Nombre Completo</th>
-                                                        <th className={`p-4 text-left font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>No. Control</th>
-                                                        <th className={`p-4 text-left font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>CURP</th>
-                                                        <th className={`p-4 text-left font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Acciones</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {getFilteredStudents().length > 0 ? (
-                                                        getFilteredStudents().map(student => (
-                                                            <tr key={student.id} className={`border-t ${darkMode ? 'border-slate-700 hover:bg-slate-700/50' : 'border-slate-100 hover:bg-slate-50'}`}>
-                                                                <td className="p-4">
-                                                                    <strong>{student.apellidos}</strong>, {student.nombre || ''}
-                                                                </td>
-                                                                <td className={`p-4 ${!student.numero_control ? 'text-slate-400' : ''}`}>
-                                                                    {student.numero_control || '--'}
-                                                                </td>
-                                                                <td className="p-4">{student.curp}</td>
-                                                                <td className="p-4">
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            onClick={() => openGradesModal(student)}
-                                                                            className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                                                                            title="Calificaciones"
-                                                                        >
-                                                                            📝
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleUpdate(student)}
-                                                                            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                                                            title="Editar Datos"
-                                                                        >
-                                                                            ✏️
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDelete(student.id)}
-                                                                            className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                                                                            title="Eliminar"
-                                                                        >
-                                                                            🗑️
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    ) : (
-                                                        <tr>
-                                                            <td colSpan="4" className="p-8 text-center text-slate-500">No hay alumnos en este grupo.</td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </section>
-                                )}
-
-                                {viewLevel === 'groups' && selectedSemesterFilter && (
-                                    <section>
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div>
-                                                <h3 className="text-lg font-bold">Grupos - {selectedSemesterFilter}° Semestre</h3>
-                                                <button
-                                                    onClick={() => { setViewLevel('semesters'); setSelectedSemesterFilter(null); }}
-                                                    className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-800'} hover:underline`}
-                                                >
-                                                    ← Volver a semestres
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                            {getAvailableGroups(selectedSemesterFilter).length > 0 ? (
-                                                getAvailableGroups(selectedSemesterFilter).map(grupo => (
-                                                    <div
-                                                        key={grupo}
-                                                        onClick={() => { setSelectedGroupFilter(grupo); setViewLevel('students'); }}
-                                                        className={`p-6 rounded-3xl border-l-4 border-l-green-500 cursor-pointer transition-all text-center ${darkMode
-                                                            ? 'bg-slate-800 border border-slate-700 hover:border-green-400'
-                                                            : 'bg-white border border-slate-100 hover:border-green-500 shadow-sm'
-                                                            }`}
-                                                    >
-                                                        <div className="text-4xl font-black text-green-500 mb-1">{grupo}</div>
-                                                        <div className="text-xs uppercase font-bold tracking-wider text-slate-400">Grupo</div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="col-span-full text-center text-slate-500 py-8">No hay grupos registrados en este semestre aún.</p>
-                                            )}
-                                        </div>
-                                    </section>
-                                )}
-                            </>
+                            <AlumnosAdmin darkMode={darkMode} />
                         )}
 
                         {activeNav === 'avisos' && (

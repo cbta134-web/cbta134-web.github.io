@@ -4,10 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 
 const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [slides, setSlides] = useState([
-    '/images/camaleon.jpg',
-    '/images/campus.png'
-  ]);
+  const [slides, setSlides] = useState([]);
 
   useEffect(() => {
     const fetchSlides = async () => {
