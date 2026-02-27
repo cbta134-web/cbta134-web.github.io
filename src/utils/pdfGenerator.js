@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 /**
  * Genera la Ficha de Pre-Registro en PDF (una sola página completa).
- * Datos totalmente separados (municipio, CP, etc.), espacio para foto en el encabezado izquierdo.
+ * Todas las tablas uniformes en ancho, espacio para foto en el encabezado.
  *
  * @param {Object} data - Datos del registro completo
  * @returns {Blob} PDF como Blob
@@ -73,10 +73,9 @@ export async function generarFichaPDF(data) {
     y += 16;
 
     // ── SECCIÓN HELPER ────────────────────────────────────
-    const seccionHeader = (titulo, yPos, customWidth) => {
-        const width = customWidth || (W - margin * 2);
+    const seccionHeader = (titulo, yPos) => {
         doc.setFillColor(...colorVerde);
-        doc.rect(margin, yPos, width, 7, 'F');
+        doc.rect(margin, yPos, W - margin * 2, 7, 'F');
         doc.setFillColor(212, 175, 55);
         doc.rect(margin, yPos, 2, 7, 'F');
 
@@ -87,12 +86,11 @@ export async function generarFichaPDF(data) {
         return yPos + 8;
     };
 
-    const tablaCeldas = (body, yPos, customWidth) => {
-        const width = customWidth || (W - margin * 2);
+    const tablaCeldas = (body, yPos) => {
         autoTable(doc, {
             body,
             startY: yPos,
-            margin: { left: margin, right: W - (margin + width) },
+            margin: { left: margin, right: margin },
             theme: 'grid',
             styles: {
                 fontSize: 8.5,
@@ -102,7 +100,7 @@ export async function generarFichaPDF(data) {
                 lineWidth: 0.15,
             },
             columnStyles: {
-                0: { fontStyle: 'bold', fillColor: [235, 245, 238], cellWidth: width * 0.35 },
+                0: { fontStyle: 'bold', fillColor: [235, 245, 238], cellWidth: 55 },
                 1: { cellWidth: 'auto' },
             },
             alternateRowStyles: { fillColor: [252, 254, 252] },
@@ -111,22 +109,13 @@ export async function generarFichaPDF(data) {
     };
 
     // ── SEC 1: DATOS DEL ASPIRANTE ───────────────────────────
-    const sec1Width = (W - margin * 2) - photoW - 5;
-    y = seccionHeader('1. DATOS PERSONALES DEL ASPIRANTE', y, sec1Width);
+    y = seccionHeader('1. DATOS PERSONALES DEL ASPIRANTE', y);
 
     y = tablaCeldas([
         ['Nombre Completo', `${data.nombre} ${data.apellido_paterno} ${data.apellido_materno}`.toUpperCase()],
         ['CURP', data.curp],
         ['Sexo', data.sexo],
         ['Fecha de Nacimiento', data.fecha_nacimiento],
-    ], y, sec1Width);
-
-    // Bajar para que no choque con la foto
-    if (y < headerH + 6 + 18 + photoH + 2) {
-        y = headerH + 6 + 18 + photoH + 2;
-    }
-
-    y = tablaCeldas([
         ['Teléfono de Contacto', data.telefono],
         ['Correo Electrónico', data.correo],
         ['Estado Civil', data.estado_civil],
