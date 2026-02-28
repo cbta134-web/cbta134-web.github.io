@@ -20,7 +20,7 @@ const DEFAULT_CARDS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-componente: Tarjeta editable inline
 // ─────────────────────────────────────────────────────────────────────────────
-function TarjetaEditable({ card, darkMode, onSave, onToggleVisibility, onDelete, onFileUpload }) {
+function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibility, onDelete, onMove, onDuplicate }) {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
         title: card.title,
@@ -112,6 +112,28 @@ function TarjetaEditable({ card, darkMode, onSave, onToggleVisibility, onDelete,
                             </div>
                             {/* Acciones */}
                             <div className="flex flex-col gap-1 flex-shrink-0">
+                                <div className="flex gap-1 mb-1">
+                                    <button
+                                        onClick={() => onMove(card, -1)}
+                                        disabled={idx === 0}
+                                        title="Mover arriba"
+                                        className={`p-1.5 rounded-lg transition ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                                    </button>
+                                    <button
+                                        onClick={() => onMove(card, 1)}
+                                        disabled={idx === total - 1}
+                                        title="Mover abajo"
+                                        className={`p-1.5 rounded-lg transition ${idx === total - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                        <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                                    </button>
+                                    <button
+                                        onClick={() => onDuplicate(card)}
+                                        title="Duplicar tarjeta"
+                                        className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                        <span className="material-symbols-outlined text-sm">content_copy</span>
+                                    </button>
+                                </div>
                                 <button
                                     onClick={() => setEditing(true)}
                                     className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap">
@@ -122,7 +144,7 @@ function TarjetaEditable({ card, darkMode, onSave, onToggleVisibility, onDelete,
                                     className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap ${card.is_visible === false
                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                         : 'bg-orange-100 text-orange-600 hover:bg-orange-200'}`}>
-                                    {card.is_visible === false ? '👁️ Mostrar' : '🙈 Ocultar'}
+                                    {card.is_visible === false ? '👁️' : '🙈'}
                                 </button>
                                 {!card.is_locked && (
                                     <button
@@ -795,6 +817,38 @@ const UiInterfazAdmin = ({
         else await fetchCards();
     };
 
+    // ── Reordenar tarjetas ──────────────────────────────────────────────────
+    const handleMoveCard = async (card, direction) => {
+        const currentIndex = cards.findIndex(c => c.id === card.id);
+        const newIndex = currentIndex + direction;
+        if (newIndex < 0 || newIndex >= cards.length) return;
+
+        const otherCard = cards[newIndex];
+
+        // Swap order_index
+        const { error: err1 } = await supabase.from('home_options').update({ order_index: otherCard.order_index }).eq('id', card.id);
+        const { error: err2 } = await supabase.from('home_options').update({ order_index: card.order_index }).eq('id', otherCard.id);
+
+        if (err1 || err2) alert('Error al reordenar');
+        else await fetchCards();
+    };
+
+    // ── Duplicar tarjeta ──────────────────────────────────────────────────
+    const handleDuplicateCard = async (card) => {
+        const { id, created_at, ...otherProps } = card;
+        const maxOrder = Math.max(...cards.map(c => c.order_index), 0);
+
+        const { error } = await supabase.from('home_options').insert([{
+            ...otherProps,
+            title: `${card.title} (Copia)`,
+            is_locked: false,
+            order_index: maxOrder + 1
+        }]);
+
+        if (error) alert('Error al duplicar: ' + error.message);
+        else await fetchCards();
+    };
+
     // ── Subir imagen para nueva tarjeta ─────────────────────────────────────
     const handleUploadNewCard = async () => {
         if (!newCardFile) return;
@@ -817,11 +871,12 @@ const UiInterfazAdmin = ({
             return;
         }
         setSavingNew(true);
+        const maxOrder = Math.max(...cards.map(c => c.order_index), 0);
         const { error } = await supabase.from('home_options').insert([{
             ...newCardForm,
             button_text: newCardForm.button_text || 'Ver más',
             is_visible: newCardForm.is_visible !== false,
-            order_index: cards.length + 1,
+            order_index: maxOrder + 1,
         }]);
         if (error) alert('Error: ' + error.message);
         else {
@@ -970,14 +1025,18 @@ const UiInterfazAdmin = ({
                                 )}
                             </div>
 
-                            {cards.map(card => (
+                            {cards.map((card, index) => (
                                 <TarjetaEditable
                                     key={card.id}
                                     card={card}
+                                    idx={index}
+                                    total={cards.length}
                                     darkMode={dk}
                                     onSave={handleSaveCard}
                                     onToggleVisibility={handleToggleVisibility}
                                     onDelete={handleDeleteCard}
+                                    onMove={handleMoveCard}
+                                    onDuplicate={handleDuplicateCard}
                                 />
                             ))}
                         </div>
