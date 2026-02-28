@@ -218,7 +218,25 @@ const App = () => {
     fetchPreregStatus();
   }, []);
 
-  const handleLinkClick = (path) => () => {
+  const handleLinkClick = (option) => () => {
+    // 1. Prioridad: Link Externo (URL completo)
+    if (option.external_url) {
+      window.open(option.external_url, '_blank');
+      return;
+    }
+
+    // 2. Prioridad: Post específico (Avisos)
+    if (option.post_id) {
+      setCurrentView('avisos'); // Redigir a la vista de avisos
+      // Opcional: Podríamos guardar el post_id en un estado para resaltar ese post
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate('/');
+      setIsNavActive(false);
+      return;
+    }
+
+    // 3. Fallback: Rutas internas tradicionales
+    const path = option.path;
     if (path === 'alumnos') {
       navigate('/alumnos');
     } else if (path === 'maestros') {
@@ -321,7 +339,7 @@ const App = () => {
                 <h2 className="navigation-title">Navega por Nuestras Secciones</h2>
                 <div className="options-grid">
                   {homeOptions.map((option) => (
-                    <div key={option.id} className="option-card" onClick={handleLinkClick(option.path)}>
+                    <div key={option.id} className="option-card" onClick={handleLinkClick(option)}>
                       <img src={option.image_url} alt={option.title} className="option-image" />
                       <div className="option-content">
                         <h3 className="option-title">{option.title}</h3>

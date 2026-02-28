@@ -20,7 +20,7 @@ const DEFAULT_CARDS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-componente: Tarjeta editable inline
 // ─────────────────────────────────────────────────────────────────────────────
-function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibility, onDelete, onMove, onDuplicate }) {
+function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibility, onDelete, onMove, onDuplicate, onCreatePost }) {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
         title: card.title,
@@ -30,6 +30,8 @@ function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibilit
         image_url: card.image_url,
         is_locked: card.is_locked,
         is_visible: card.is_visible !== false,
+        external_url: card.external_url || '',
+        post_id: card.post_id || ''
     });
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -198,8 +200,24 @@ function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibilit
                             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className={input} />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Path (ruta)</label>
-                            <input type="text" value={form.path} onChange={e => setForm(f => ({ ...f, path: e.target.value }))} className={input} />
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Ruta interna (Path)</label>
+                            <input type="text" placeholder="maestros" value={form.path} onChange={e => setForm(f => ({ ...f, path: e.target.value }))} className={input} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">URL Externa (Opcional)</label>
+                            <input type="text" placeholder="https://..." value={form.external_url} onChange={e => setForm(f => ({ ...f, external_url: e.target.value }))} className={input} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">ID de Publicación (Post ID)</label>
+                            <div className="flex gap-2">
+                                <input type="number" placeholder="Ej: 42" value={form.post_id} onChange={e => setForm(f => ({ ...f, post_id: e.target.value }))} className={input} />
+                                <button type="button" onClick={async () => {
+                                    const id = await onCreatePost(form.title);
+                                    if (id) setForm({ ...form, post_id: id });
+                                }} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-200 transition whitespace-nowrap">
+                                    + Crear Post
+                                </button>
+                            </div>
                         </div>
                         <div className="flex flex-col gap-2 justify-end">
                             <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -234,10 +252,20 @@ function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibilit
 // ─────────────────────────────────────────────────────────────────────────────
 function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
     const [replacingImage, setReplacingImage] = useState(false);
+    const [editingDetails, setEditingDetails] = useState(false);
     const [newUrl, setNewUrl] = useState('');
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Estado para campos de texto
+    const [form, setForm] = useState({
+        title: slide.title || '',
+        subtitle: slide.subtitle || '',
+        button_text: slide.button_text || '',
+        button_link: slide.button_link || '',
+        overlay_opacity: slide.overlay_opacity || 0.4
+    });
 
     const input = `p-2.5 rounded-xl border text-sm ${darkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200'} w-full focus:ring-2 focus:ring-blue-500 outline-none transition`;
 
@@ -273,12 +301,21 @@ function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
     };
 
     const handleSave = async () => {
-        const url = newUrl.trim();
-        if (!url) { alert('Ingresa una URL o sube una imagen.'); return; }
         setSaving(true);
-        const { error } = await supabase.from('hero_slides').update({ image_url: url }).eq('id', slide.id);
+        const { error } = await supabase.from('hero_slides')
+            .update({
+                image_url: newUrl.trim() || slide.image_url,
+                ...form
+            })
+            .eq('id', slide.id);
+
         if (error) alert('Error: ' + error.message);
-        else { await onUpdate(); setReplacingImage(false); setNewUrl(''); }
+        else {
+            await onUpdate();
+            setReplacingImage(false);
+            setEditingDetails(false);
+            setNewUrl('');
+        }
         setSaving(false);
     };
 
@@ -320,35 +357,83 @@ function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
                 {/* Info + acciones */}
                 <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
                     <div>
-                        <p className={`text-xs font-mono truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {slide.image_url}
+                        <p className="font-bold text-sm truncate">{slide.title || `Slide #${idx + 1}`}</p>
+                        <p className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {slide.subtitle || slide.image_url}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-2">
                         <button
-                            onClick={() => { setReplacingImage(r => !r); setNewUrl(''); setFile(null); }}
+                            onClick={() => { setEditingDetails(e => !e); setReplacingImage(false); }}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition ${editingDetails ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                            {editingDetails ? '✕ Cerrar' : '📝 Editar contenido'}
+                        </button>
+                        <button
+                            onClick={() => { setReplacingImage(r => !r); setEditingDetails(false); setNewUrl(''); setFile(null); }}
                             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition ${replacingImage
                                 ? (darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700')
-                                : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                            {replacingImage ? '✕ Cancelar' : '🔄 Reemplazar imagen'}
+                                : (darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}`}>
+                            {replacingImage ? '✕ Cancelar' : '🖼️ Cambiar imagen'}
                         </button>
                         <button
                             onClick={handleToggleLock}
                             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition ${slide.is_locked
-                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                : (darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}`}>
-                            {slide.is_locked ? '🔓 Desproteger' : '🔒 Proteger'}
+                                ? 'bg-orange-100 text-orange-700'
+                                : (darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
+                            {slide.is_locked ? '🔓' : '🔒'}
                         </button>
                         {!slide.is_locked && (
                             <button
                                 onClick={handleDelete}
-                                className="text-xs px-3 py-1.5 bg-red-100 text-red-600 rounded-lg font-semibold hover:bg-red-200 transition">
-                                🗑️ Eliminar
+                                className="text-xs px-3 py-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition">
+                                🗑️
                             </button>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Panel de edición de detalles */}
+            {editingDetails && (
+                <div className={`border-t p-4 space-y-4 ${darkMode ? 'border-slate-700 bg-slate-800/30' : 'border-slate-100 bg-slate-50'}`}>
+                    <p className="text-xs font-bold text-blue-600 uppercase">📝 Contenido del Slide</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Título principal</label>
+                            <input type="text" placeholder="Ej: ¡Bienvenidos al CBTa!"
+                                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={input} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Subtítulo / Descripción</label>
+                            <textarea placeholder="Breve mensaje sobre la imagen..." rows={1}
+                                value={form.subtitle} onChange={e => setForm({ ...form, subtitle: e.target.value })} className={input} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Texto del botón (Opcional)</label>
+                            <input type="text" placeholder="Ej: Ver noticias"
+                                value={form.button_text} onChange={e => setForm({ ...form, button_text: e.target.value })} className={input} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Enlace del botón</label>
+                            <input type="text" placeholder="Ej: /noticias o https://..."
+                                value={form.button_link} onChange={e => setForm({ ...form, button_link: e.target.value })} className={input} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-semibold text-slate-500 uppercase">Opacidad de fondo (legibilidad)</label>
+                                <span className="text-xs font-bold text-blue-600">{(form.overlay_opacity * 100).toFixed(0)}%</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1"
+                                value={form.overlay_opacity} onChange={e => setForm({ ...form, overlay_opacity: parseFloat(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                        </div>
+                    </div>
+                    <button onClick={handleSave} disabled={saving}
+                        className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl transition shadow-lg shadow-blue-700/20">
+                        {saving ? '⏳ Guardando...' : '💾 Guardar Contenido'}
+                    </button>
+                </div>
+            )}
 
             {/* Panel de reemplazo (expandible) */}
             {replacingImage && (
@@ -410,11 +495,18 @@ function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
 function CarruselSection({ darkMode }) {
     const [slides, setSlides] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [addUrl, setAddUrl] = useState('');
+    const [addSlideForm, setAddSlideForm] = useState({
+        image_url: '',
+        title: '',
+        subtitle: '',
+        button_text: '',
+        button_link: '',
+        is_locked: false
+    });
     const [addFile, setAddFile] = useState(null);
-    const [addLocked, setAddLocked] = useState(false);
     const [uploadingAdd, setUploadingAdd] = useState(false);
     const [savingAdd, setSavingAdd] = useState(false);
+    const [showAddForm, setShowAddForm] = useState(false);
 
     const card = `rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`;
     const input = `p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200'} w-full focus:ring-2 focus:ring-blue-500 outline-none transition`;
@@ -439,22 +531,26 @@ function CarruselSection({ darkMode }) {
         const { error } = await supabase.storage.from('ui_media').upload(fileName, addFile, { upsert: true });
         if (error) { alert('Error subiendo: ' + error.message); setUploadingAdd(false); return; }
         const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
-        setAddUrl(publicUrl);
+        setAddSlideForm(f => ({ ...f, image_url: publicUrl })); // Correctly update addSlideForm
         setAddFile(null);
         setUploadingAdd(false);
     };
 
     const handleAddSlide = async (e) => {
         e.preventDefault();
-        if (!addUrl.trim()) { alert('Ingresa o sube una imagen primero.'); return; }
+        if (!addSlideForm.image_url.trim()) { alert('Ingresa o sube una imagen primero.'); return; }
         setSavingAdd(true);
         const { error } = await supabase.from('hero_slides').insert([{
-            image_url: addUrl.trim(),
-            is_locked: addLocked,
+            ...addSlideForm,
             order_index: slides.length,
         }]);
         if (error) alert('Error: ' + error.message);
-        else { setAddUrl(''); setAddFile(null); setAddLocked(false); await fetchSlides(); }
+        else {
+            setAddSlideForm({ image_url: '', title: '', subtitle: '', button_text: '', button_link: '', is_locked: false });
+            setAddFile(null);
+            setShowAddForm(false);
+            await fetchSlides();
+        }
         setSavingAdd(false);
     };
 
@@ -469,9 +565,15 @@ function CarruselSection({ darkMode }) {
                     </span>
                 )}
             </h3>
-            <p className="text-sm text-slate-400 mb-6">
-                Cada imagen aparece en el carrusel del inicio. Haz clic en <strong>"Reemplazar imagen"</strong> en cualquier slide para cambiarla, o usa el botón de papelera para eliminarla.
-            </p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <p className="text-sm text-slate-400">
+                    Controla la portada del sitio. Puedes añadir títulos y botones sobre las imágenes para destacar contenido importante.
+                </p>
+                <button onClick={() => setShowAddForm(!showAddForm)}
+                    className="px-4 py-2 bg-purple-600 text-white font-bold rounded-xl text-sm hover:bg-purple-700 transition flex-shrink-0">
+                    {showAddForm ? '✕ Cancelar' : '+ Nuevo Slide'}
+                </button>
+            </div>
 
             {/* Lista de slides existentes */}
             {loading && (
@@ -504,58 +606,81 @@ function CarruselSection({ darkMode }) {
             )}
 
             {/* Agregar nueva imagen */}
-            <div className={`rounded-2xl border-2 border-dashed p-5 space-y-4 ${darkMode ? 'border-slate-600 bg-slate-800/30' : 'border-blue-200 bg-blue-50/40'}`}>
-                <p className="text-sm font-bold text-blue-600 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">add_photo_alternate</span>
-                    Agregar nueva imagen al carrusel
-                </p>
+            {showAddForm && (
+                <div className={`rounded-2xl border-2 border-dashed p-6 space-y-4 mb-8 ${darkMode ? 'border-purple-600 bg-purple-900/10' : 'border-purple-200 bg-purple-50/40'}`}>
+                    <p className="text-sm font-bold text-purple-600 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base">add_photo_alternate</span>
+                        Configurar nueva portada
+                    </p>
 
-                {/* Preview */}
-                {addUrl && (
-                    <div className="flex gap-3 items-center">
-                        <div className="w-28 h-16 rounded-xl overflow-hidden border-2 border-blue-400 flex-shrink-0">
-                            <img src={addUrl} alt="preview" className="w-full h-full object-cover"
-                                onError={e => e.target.src = 'https://placehold.co/200?text=Error'} />
+                    <form onSubmit={handleAddSlide} className="space-y-4">
+                        {/* Preview y Subida */}
+                        <div className="flex flex-col md:flex-row gap-4 items-start">
+                            <div className="w-full md:w-48 h-28 bg-slate-200 rounded-xl overflow-hidden border-2 border-slate-300 flex-shrink-0">
+                                {addSlideForm.image_url ? (
+                                    <img src={addSlideForm.image_url} alt="preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs text-center p-2">
+                                        Subir imagen<br />para vista previa
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 space-y-3 w-full">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Subir archivo</label>
+                                    <div className="flex gap-2">
+                                        <input type="file" accept="image/*" onChange={e => setAddFile(e.target.files?.[0] || null)} className={`${input} cursor-pointer`} />
+                                        <button type="button" onClick={handleUploadForAdd} disabled={uploadingAdd || !addFile}
+                                            className="px-4 py-2 bg-green-600 text-white font-bold rounded-xl disabled:opacity-50 text-xs">
+                                            {uploadingAdd ? '⏳' : 'Subir'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">O URL directa</label>
+                                    <input type="text" placeholder="/images/..." value={addSlideForm.image_url}
+                                        onChange={e => setAddSlideForm({ ...addSlideForm, image_url: e.target.value })} className={input} />
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-green-600 font-semibold">✅ Lista para agregar</p>
-                    </div>
-                )}
 
-                <form onSubmit={handleAddSlide} className="space-y-3">
-                    {/* Subir archivo */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                        <div className="md:col-span-2">
-                            <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Subir imagen desde tu equipo</label>
-                            <input type="file" accept="image/*"
-                                onChange={e => setAddFile(e.target.files?.[0] || null)}
-                                className={`${input} cursor-pointer`} />
+                        {/* Detalles del texto */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 border-t border-purple-100 dark:border-purple-900/30">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Título principal (Opcional)</label>
+                                <input type="text" placeholder="Ej: Inscripciones Abiertas"
+                                    value={addSlideForm.title} onChange={e => setAddSlideForm({ ...addSlideForm, title: e.target.value })} className={input} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Subtítulo / Bajada</label>
+                                <input type="text" placeholder="Ej: Ven y forma parte de nuestra comunidad"
+                                    value={addSlideForm.subtitle} onChange={e => setAddSlideForm({ ...addSlideForm, subtitle: e.target.value })} className={input} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Texto del botón</label>
+                                <input type="text" placeholder="Ej: Ver requisitos"
+                                    value={addSlideForm.button_text} onChange={e => setAddSlideForm({ ...addSlideForm, button_text: e.target.value })} className={input} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">Enlace del botón</label>
+                                <input type="text" placeholder="Ej: /admission"
+                                    value={addSlideForm.button_link} onChange={e => setAddSlideForm({ ...addSlideForm, button_link: e.target.value })} className={input} />
+                            </div>
                         </div>
-                        <button type="button" onClick={handleUploadForAdd} disabled={uploadingAdd || !addFile}
-                            className="py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl disabled:opacity-50 transition text-sm">
-                            {uploadingAdd ? '⏳ Subiendo...' : '⬆️ Subir'}
-                        </button>
-                    </div>
 
-                    {/* O URL */}
-                    <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">O pegar URL de imagen</label>
-                        <input type="text" placeholder="https://ejemplo.com/imagen.jpg"
-                            value={addUrl}
-                            onChange={e => setAddUrl(e.target.value)}
-                            className={input} />
-                    </div>
-
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" checked={addLocked} onChange={e => setAddLocked(e.target.checked)} className="w-4 h-4 rounded" />
-                        <span>🔒 Proteger (no se podrá eliminar)</span>
-                    </label>
-
-                    <button type="submit" disabled={savingAdd || !addUrl}
-                        className="px-6 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl transition disabled:opacity-60">
-                        {savingAdd ? '💾 Agregando...' : '+ Agregar al carrusel'}
-                    </button>
-                </form>
-            </div>
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" checked={addSlideForm.is_locked} onChange={e => setAddSlideForm({ ...addSlideForm, is_locked: e.target.checked })} className="w-4 h-4 rounded" />
+                                <span>🔒 Proteger contra eliminación</span>
+                            </label>
+                            <button type="submit" disabled={savingAdd || !addSlideForm.image_url}
+                                className="px-8 py-3 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl transition disabled:opacity-60 shadow-lg shadow-purple-700/20">
+                                {savingAdd ? '💾 Creando...' : '💾 Crear Portada'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
         </section>
     );
 }
@@ -742,7 +867,17 @@ const UiInterfazAdmin = ({
     const [loadingCards, setLoadingCards] = useState(true);
     const [seedingCards, setSeedingCards] = useState(false);
     const [addingCard, setAddingCard] = useState(false);
-    const [newCardForm, setNewCardForm] = useState({ image_url: '', title: '', description: '', path: '', button_text: 'Ver más', is_locked: false, is_visible: true });
+    const [newCardForm, setNewCardForm] = useState({
+        image_url: '',
+        title: '',
+        description: '',
+        path: '',
+        button_text: 'Ver más',
+        is_locked: false,
+        is_visible: true,
+        external_url: '',
+        post_id: ''
+    });
     const [newCardFile, setNewCardFile] = useState(null);
     const [uploadingNewCard, setUploadingNewCard] = useState(false);
     const [savingNew, setSavingNew] = useState(false);
@@ -794,6 +929,8 @@ const UiInterfazAdmin = ({
                 image_url: form.image_url,
                 is_locked: form.is_locked,
                 is_visible: form.is_visible !== false,
+                external_url: form.external_url || null,
+                post_id: form.post_id || null,
             })
             .eq('id', id);
         if (error) { alert('Error al guardar: ' + error.message); return; }
@@ -831,6 +968,24 @@ const UiInterfazAdmin = ({
 
         if (err1 || err2) alert('Error al reordenar');
         else await fetchCards();
+    };
+
+    // ── Vincular Nuevo Aviso desde Tarjeta ──────────────────────────────────
+    const handleCreatePostForCard = async (cardTitle) => {
+        const confirm = window.confirm(`¿Quieres crear un nuevo Aviso Global con el título "${cardTitle}" y vincularlo?`);
+        if (!confirm) return null;
+
+        const { data, error } = await supabase.from('publicaciones_globales').insert([{
+            titulo: cardTitle,
+            subtitulo: 'Nueva publicación desde tarjeta',
+            contenido: 'Escribe aquí el contenido detallado...',
+            tipo: 'general',
+            fecha: new Date().toISOString().split('T')[0],
+            is_visible: true
+        }]).select();
+
+        if (error) { alert('Error: ' + error.message); return null; }
+        return data[0].id;
     };
 
     // ── Duplicar tarjeta ──────────────────────────────────────────────────
@@ -955,6 +1110,22 @@ const UiInterfazAdmin = ({
                                     <input type="text" placeholder="ej: maestros" value={newCardForm.path} onChange={e => setNewCardForm(f => ({ ...f, path: e.target.value }))} className={input} required />
                                 </div>
                                 <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">URL Externa</label>
+                                    <input type="text" placeholder="https://..." value={newCardForm.external_url} onChange={e => setNewCardForm(f => ({ ...f, external_url: e.target.value }))} className={input} />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">ID de Aviso (Post ID) - Opcional</label>
+                                    <div className="flex gap-2">
+                                        <input type="number" placeholder="Vincular a una publicación global específica" value={newCardForm.post_id} onChange={e => setNewCardForm(f => ({ ...f, post_id: e.target.value }))} className={input} />
+                                        <button type="button" onClick={async () => {
+                                            const id = await handleCreatePostForCard(newCardForm.title || 'Nueva Publicación');
+                                            if (id) setNewCardForm({ ...newCardForm, post_id: id });
+                                        }} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-200 transition whitespace-nowrap">
+                                            + Crear Nuevo Contenido
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
                                     <label className="text-xs font-semibold text-slate-500 uppercase block mb-1">URL de imagen *</label>
                                     <input type="text" placeholder="/images/..." value={newCardForm.image_url} onChange={e => setNewCardForm(f => ({ ...f, image_url: e.target.value }))} className={input} />
                                 </div>
@@ -1037,6 +1208,7 @@ const UiInterfazAdmin = ({
                                     onDelete={handleDeleteCard}
                                     onMove={handleMoveCard}
                                     onDuplicate={handleDuplicateCard}
+                                    onCreatePost={handleCreatePostForCard}
                                 />
                             ))}
                         </div>
