@@ -70,19 +70,28 @@ const Alumnos = () => {
 
 
     const checkUser = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            const isAllowed = await checkEmailDomain(session.user.email);
-            if (isAllowed) {
-                setUser(session.user);
-                await fetchProfile(session.user.id, session.user.email);
-                setAccessDenied(false);
-            } else {
-                setAccessDenied(true);
-                setUser(session.user);
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
+                throw error;
             }
+            if (session) {
+                const isAllowed = await checkEmailDomain(session.user.email);
+                if (isAllowed) {
+                    setUser(session.user);
+                    await fetchProfile(session.user.id, session.user.email);
+                    setAccessDenied(false);
+                } else {
+                    setAccessDenied(true);
+                    setUser(session.user);
+                }
+            }
+        } catch (err) {
+            console.error('Error checking user session:', err);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const fetchProfile = async (id, email) => {

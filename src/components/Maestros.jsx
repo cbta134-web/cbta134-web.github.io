@@ -16,51 +16,6 @@ const Maestros = () => {
   const navigate = useNavigate();
   const onBack = () => navigate('/');
 
-  const defaultRecursos = [
-    {
-      name: "Cuadernillos",
-      description: "Planeación didáctica y recursos educativos",
-      icon: "📚",
-      url: "http://www.planeaciondidactica.sems.gob.mx/login",
-      color: "#007bff"
-    },
-    {
-      name: "SISEEMS",
-      description: "Sistema de Evaluación y Seguimiento",
-      icon: "📊",
-      url: "http://168.255.121.25/develop/index.php?",
-      color: "#28a745"
-    },
-    {
-      name: "Talón de Pago",
-      description: "Portal de autoservicios SEMS",
-      icon: "💰",
-      url: "https://portalautoservicios-sems.sep.gob.mx/login.jsp",
-      color: "#ffc107"
-    },
-    {
-      name: "DGETAYCM México",
-      description: "Dirección General de Educación Tecnológica Agropecuaria y Ciencias del Mar",
-      icon: "🏛️",
-      url: "https://dgetaycm.sep.gob.mx/",
-      color: "#dc3545"
-    },
-    {
-      name: "SEP Tlaxcala",
-      description: "Secretaría de Educación Pública Tlaxcala",
-      icon: "🏢",
-      url: "https://www.septlaxcala.gob.mx",
-      color: "#6f42c1"
-    },
-    {
-      name: "Oficina Virtual ISSSTE",
-      description: "Instituto de Seguridad y Servicios Sociales",
-      icon: "🏥",
-      url: "https://oficinavirtual.issste.gob.mx/",
-      color: "#20c997"
-    }
-  ];
-
   const [teachersConfig, setTeachersConfig] = useState(null);
   const [teacherLinks, setTeacherLinks] = useState([]);
 
@@ -85,7 +40,7 @@ const Maestros = () => {
     fetchTeachersData();
   }, []);
 
-  const recursos = teacherLinks.length > 0 ? teacherLinks : defaultRecursos;
+  const recursos = teacherLinks;
 
   const isDark = useIsDark();
 

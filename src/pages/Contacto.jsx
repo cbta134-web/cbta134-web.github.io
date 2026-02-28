@@ -149,27 +149,27 @@ const Contacto = ({ setCurrentView }) => {
   return (
     <div style={pageStyle}>
       <BackButton onClick={() => setCurrentView('home')} />
-      
+
       <div style={containerStyle}>
         <h1 style={titleStyle}>📞 Contacto</h1>
 
         <section style={sectionStyle}>
           <h2 style={sectionTitleStyle}>📍 Información de Contacto</h2>
-          
+
           <div style={contactInfoStyle}>
             <span style={iconStyle}>🏫</span>
             <div>
-              <strong>Dirección:</strong><br/>
-              {contactMain?.address_line1 || 'CARRETERA TETLANOHCAN A MALINTZIN KILÓMETRO NUM. 3'}<br/>
+              <strong>Dirección:</strong><br />
+              {contactMain?.address_line1 || 'CARRETERA TETLANOHCAN A MALINTZIN KILÓMETRO NUM. 3'}<br />
               {contactMain?.address_line2 || 'San Francisco, México, 90800'}
-              {contactMain?.address_line3 ? (<><br/>{contactMain.address_line3}</>) : null}
+              {contactMain?.address_line3 ? (<><br />{contactMain.address_line3}</>) : null}
             </div>
           </div>
 
           <div style={contactInfoStyle}>
             <span style={iconStyle}>📞</span>
             <div>
-              <strong>Teléfono:</strong><br/>
+              <strong>Teléfono:</strong><br />
               <a href={contactMain?.phone ? `tel:${contactMain.phone.replace(/\s/g, '')}` : 'tel:+522464623456'} style={linkStyle}>
                 {contactMain?.phone || '01 (246) 46 2 34 56'}
               </a>
@@ -179,7 +179,7 @@ const Contacto = ({ setCurrentView }) => {
           <div style={contactInfoStyle}>
             <span style={iconStyle}>📧</span>
             <div>
-              <strong>Correo Electrónico:</strong><br/>
+              <strong>Correo Electrónico:</strong><br />
               <a href={contactMain?.email ? `mailto:${contactMain.email}` : 'mailto:cbta134@yahoo.com.mx'} style={linkStyle}>
                 {contactMain?.email || 'cbta134@yahoo.com.mx'}
               </a>
@@ -189,7 +189,7 @@ const Contacto = ({ setCurrentView }) => {
           <div style={contactInfoStyle}>
             <span style={iconStyle}>🌐</span>
             <div>
-              <strong>Sitio Web:</strong><br/>
+              <strong>Sitio Web:</strong><br />
               <a href={contactMain?.website || 'http://www.cbta134.edu.mx/'} target="_blank" rel="noopener noreferrer" style={linkStyle}>
                 {contactMain?.website || 'www.cbta134.edu.mx'}
               </a>
@@ -199,7 +199,7 @@ const Contacto = ({ setCurrentView }) => {
           <div style={contactInfoStyle}>
             <span style={iconStyle}>⭐</span>
             <div>
-              <strong>Calificación:</strong><br/>
+              <strong>Calificación:</strong><br />
               {contactMain?.rating_text || 'Recomendado por el 92% (17 opiniones)'}
             </div>
           </div>
@@ -207,9 +207,9 @@ const Contacto = ({ setCurrentView }) => {
           <div style={contactInfoStyle}>
             <span style={iconStyle}>🕒</span>
             <div>
-              <strong>Horario de Atención:</strong><br/>
-              <span style={{color: '#28a745', fontWeight: 'bold'}}>{contactMain?.status_text || '🟢 Abierto ahora'}</span><br/>
-              {contactMain?.hours_line1 || 'Lunes a Viernes: 7:00 AM - 4:00 PM'}<br/>
+              <strong>Horario de Atención:</strong><br />
+              <span style={{ color: '#28a745', fontWeight: 'bold' }}>{contactMain?.status_text || '🟢 Abierto ahora'}</span><br />
+              {contactMain?.hours_line1 || 'Lunes a Viernes: 7:00 AM - 4:00 PM'}<br />
               {contactMain?.hours_line2 || 'Sábados: 8:00 AM - 12:00 PM'}
             </div>
           </div>
@@ -221,7 +221,7 @@ const Contacto = ({ setCurrentView }) => {
             <div key={item.id} style={contactInfoStyle}>
               <span style={iconStyle}>{item.icon || '👤'}</span>
               <div>
-                <strong>{item.title}</strong><br/>
+                <strong>{item.title}</strong><br />
                 {item.detail}
               </div>
             </div>
@@ -230,12 +230,12 @@ const Contacto = ({ setCurrentView }) => {
 
         <section style={sectionStyle}>
           <h2 style={sectionTitleStyle}>🌐 Síguenos en Redes Sociales</h2>
-          <div style={{textAlign: 'center'}}>
+          <div style={{ textAlign: 'center' }}>
             {socialLinks.length === 0 ? (
               <>
-                <a 
-                  href="https://www.facebook.com/share/15g75ZdJRg/" 
-                  target="_blank" 
+                <a
+                  href="https://www.facebook.com/share/15g75ZdJRg/"
+                  target="_blank"
                   rel="noopener noreferrer"
                   style={facebookStyle}
                   onMouseEnter={(e) => e.target.style.transform = 'translateY(-3px)'}
@@ -243,16 +243,16 @@ const Contacto = ({ setCurrentView }) => {
                 >
                   📘 Facebook Oficial
                 </a>
-                <p style={{color: isDark ? '#bfc7cf' : '#666', marginTop: '15px'}}>
+                <p style={{ color: isDark ? '#bfc7cf' : '#666', marginTop: '15px' }}>
                   Mantente informado sobre noticias, eventos y actividades de nuestra institución
                 </p>
               </>
             ) : (
               socialLinks.map((item) => (
                 <div key={item.id} style={{ marginBottom: '16px' }}>
-                  <a 
+                  <a
                     href={item.url}
-                    target="_blank" 
+                    target="_blank"
                     rel="noopener noreferrer"
                     style={facebookStyle}
                     onMouseEnter={(e) => e.target.style.transform = 'translateY(-3px)'}
@@ -260,7 +260,7 @@ const Contacto = ({ setCurrentView }) => {
                   >
                     {item.icon || '🔗'} {item.name}
                   </a>
-                  <p style={{color: isDark ? '#bfc7cf' : '#666', marginTop: '10px'}}>
+                  <p style={{ color: isDark ? '#bfc7cf' : '#666', marginTop: '10px' }}>
                     {item.description}
                   </p>
                 </div>
@@ -271,13 +271,13 @@ const Contacto = ({ setCurrentView }) => {
 
         <section style={sectionStyle}>
           <h2 style={sectionTitleStyle}>🗺️ Ubicación</h2>
-          <p style={{textAlign: 'center', marginBottom: '20px', color: '#666'}}>
+          <p style={{ textAlign: 'center', marginBottom: '20px', color: '#666' }}>
             {location?.address_text || 'CARRETERA TETLANOHCAN A MALINTZIN KILÓMETRO NUM. 3, San Francisco, México'}
           </p>
           <div style={mapStyle}>
             <iframe
               title="Ubicación CBTA 134"
-              src={location?.map_embed_url || 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3771.8962250553377!2d-98.14220228509102!3d19.261621686935783!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85cfdd8ebaaaaaab%3A0x27dafbca82bfb2a0!2sCarretera%20Tetlanohcan%20a%20Malintzin%2C%20San%20Francisco%2C%20Tlax.!5e0!3m2!1sen!2smx!4v1648000000000!5m2!1sen!2smx'}
+              src={location?.map_embed_url || 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3766.4767792435587!2d-98.1400007!3d19.261621699999996!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85cfdd8ebaaaaaab%3A0x27dafbca82bfb2a0!2sCentro%20De%20Bachillerato%20Tecnol%C3%B3gico%20Agropecuario%20N%C3%BAm.%20134!5e0!3m2!1ses-419!2smx!4v1772321237884!5m2!1ses-419!2smx'}
               width="100%"
               height="400"
               style={{ border: 0 }}
@@ -291,9 +291,9 @@ const Contacto = ({ setCurrentView }) => {
         <section style={sectionStyle}>
           <h2 style={sectionTitleStyle}>❓ Preguntas Frecuentes</h2>
           {faqs.map((item) => (
-            <div key={item.id} style={{marginBottom: '20px'}}>
-              <h4 style={{color: isDark ? '#e6eef8' : '#2c3e50', marginBottom: '8px'}}>{item.question}</h4>
-              <p style={{color: isDark ? '#bfc7cf' : '#666', marginBottom: '15px'}}>
+            <div key={item.id} style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: isDark ? '#e6eef8' : '#2c3e50', marginBottom: '8px' }}>{item.question}</h4>
+              <p style={{ color: isDark ? '#bfc7cf' : '#666', marginBottom: '15px' }}>
                 {item.answer}
               </p>
             </div>
@@ -306,8 +306,8 @@ const Contacto = ({ setCurrentView }) => {
           color: 'white',
           textAlign: 'center'
         }}>
-          <h2 style={{...sectionTitleStyle, color: 'white'}}>{cta?.title || '📩 ¿Necesitas más información?'}</h2>
-          <p style={{marginBottom: '20px', fontSize: '16px', color: 'white'}}>
+          <h2 style={{ ...sectionTitleStyle, color: 'white' }}>{cta?.title || '📩 ¿Necesitas más información?'}</h2>
+          <p style={{ marginBottom: '20px', fontSize: '16px', color: 'white' }}>
             {cta?.description || 'Estamos aquí para ayudarte. No dudes en contactarnos para resolver todas tus dudas sobre nuestros programas educativos, proceso de admisión o cualquier otra consulta.'}
           </p>
           <div style={{
@@ -317,7 +317,7 @@ const Contacto = ({ setCurrentView }) => {
             marginTop: '20px',
             backdropFilter: 'blur(10px)'
           }}>
-            <p style={{margin: 0, fontWeight: 'bold', color: 'white'}}>
+            <p style={{ margin: 0, fontWeight: 'bold', color: 'white' }}>
               {cta?.highlight_text || '🌟 ¡Tu futuro comienza aquí en el CBTA 134! 🌟'}
             </p>
           </div>

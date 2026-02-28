@@ -162,6 +162,8 @@ const MaestrosAdmin = () => {
 
     // Estados para Galería
     const [galleryItems, setGalleryItems] = useState([]);
+    const [useCustomSection, setUseCustomSection] = useState(false);
+    const [customSection, setCustomSection] = useState('');
     const [galleryForm, setGalleryForm] = useState({
         section: 'instalaciones',
         title: '',
@@ -449,73 +451,82 @@ const MaestrosAdmin = () => {
     }, [activeNav]);
 
     const checkUser = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            setLoading(false);
-            return;
-        }
-        setUser(session.user);
-
-        // Verificar si la cuenta está permitida en el EduPanel
         try {
-            const { data: allowedData, error: allowedError } = await supabase
-                .from('edupanel_allowed_accounts')
-                .select('*')
-                .eq('email', session.user.email.toLowerCase())
-                .maybeSingle();
-
-            // Si la tabla no existe o hay error, permitir acceso (la tabla aún no se ha creado)
-            if (allowedError) {
-                console.warn('Tabla edupanel_allowed_accounts no existe o error:', allowedError.message);
-                // Continuar sin restricción de cuentas
-                setAccountNotAllowed(false);
-                setIsMasterAccount(true); // Dar permisos completos mientras no exista la tabla
-            } else if (!allowedData) {
-                setAccountNotAllowed(true);
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
+                throw error;
+            }
+            if (!session) {
                 setLoading(false);
                 return;
-            } else {
-                setIsMasterAccount(allowedData.is_master === true);
+            }
+            setUser(session.user);
+
+            // Verificar si la cuenta está permitida en el EduPanel
+            try {
+                const { data: allowedData, error: allowedError } = await supabase
+                    .from('edupanel_allowed_accounts')
+                    .select('*')
+                    .eq('email', session.user.email.toLowerCase())
+                    .maybeSingle();
+
+                // Si la tabla no existe o hay error, permitir acceso (la tabla aún no se ha creado)
+                if (allowedError) {
+                    console.warn('Tabla edupanel_allowed_accounts no existe o error:', allowedError.message);
+                    // Continuar sin restricción de cuentas
+                    setAccountNotAllowed(false);
+                    setIsMasterAccount(true); // Dar permisos completos mientras no exista la tabla
+                } else if (!allowedData) {
+                    setAccountNotAllowed(true);
+                    setLoading(false);
+                    return;
+                } else {
+                    setIsMasterAccount(allowedData.is_master === true);
+                    setAccountNotAllowed(false);
+                }
+            } catch (err) {
+                console.warn('Error verificando cuentas permitidas:', err);
                 setAccountNotAllowed(false);
+                setIsMasterAccount(true);
+            }
+
+            // Verificar si ya está verificado en esta sesión
+            const verified = sessionStorage.getItem('maestro_security_verified');
+            if (verified === 'true') {
+                setSecurityVerified(true);
+            }
+
+            // Obtener o crear perfil con rol maestro
+            let { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (!profileData || profileData.rol !== 'maestro') {
+                const { data: updatedProfile } = await supabase
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        rol: 'maestro',
+                        nombre: session.user.user_metadata.full_name,
+                        avatar_url: session.user.user_metadata.avatar_url
+                    })
+                    .select()
+                    .single();
+                profileData = updatedProfile;
+            }
+
+            setProfile(profileData);
+            if (verified === 'true') {
+                fetchStudents();
             }
         } catch (err) {
-            console.warn('Error verificando cuentas permitidas:', err);
-            setAccountNotAllowed(false);
-            setIsMasterAccount(true);
+            console.error("Error in checkUser:", err);
+        } finally {
+            setLoading(false);
         }
-
-        // Verificar si ya está verificado en esta sesión
-        const verified = sessionStorage.getItem('maestro_security_verified');
-        if (verified === 'true') {
-            setSecurityVerified(true);
-        }
-
-        // Obtener o crear perfil con rol maestro
-        let { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-        if (!profileData || profileData.rol !== 'maestro') {
-            const { data: updatedProfile } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: session.user.id,
-                    rol: 'maestro',
-                    nombre: session.user.user_metadata.full_name,
-                    avatar_url: session.user.user_metadata.avatar_url
-                })
-                .select()
-                .single();
-            profileData = updatedProfile;
-        }
-
-        setProfile(profileData);
-        if (verified === 'true') {
-            fetchStudents();
-        }
-        setLoading(false);
     };
 
     const verifySecurityCode = async (e) => {
@@ -775,6 +786,344 @@ const MaestrosAdmin = () => {
         }
         setPreregConfigLoading(false);
     };
+    const renderPreregConfigForm = () => (
+        <div className="space-y-6">
+            {/* ═══ ESTADO DEL MÓDULO ═══ */}
+            <div className={`p-5 rounded-3xl border ${preregConfig.habilitado ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${preregConfig.habilitado ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                            <span className="material-symbols-outlined">{preregConfig.habilitado ? 'check_circle' : 'cancel'}</span>
+                        </div>
+                        <div>
+                            <h4 className="font-bold">Estatus del Módulo</h4>
+                            <p className="text-xs opacity-70">Si se desactiva, la landing muestra "Convocatoria Cerrada"</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setPreregConfig({ ...preregConfig, habilitado: !preregConfig.habilitado })}
+                        className={`px-5 py-2 rounded-xl font-bold text-sm transition-all ${preregConfig.habilitado ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
+                    >
+                        {preregConfig.habilitado ? 'Desactivar' : 'Activar'}
+                    </button>
+                </div>
+            </div>
+
+            <form onSubmit={handleSavePreregistroConfig} className="space-y-6">
+
+                {/* ═══ HERO / ENCABEZADO ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-600 text-white rounded-lg">🏠 Hero / Encabezado</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge (insignia superior)</label>
+                            <input type="text" value={preregConfig.badge_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, badge_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📋 Convocatoria Abierta · Ciclo 2025–2026" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título principal</label>
+                            <input type="text" value={preregConfig.titulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, titulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
+                            <input type="text" value={preregConfig.subtitulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, subtitulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón CTA</label>
+                            <input type="text" value={preregConfig.cta_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Ahora!" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón CTA</label>
+                            <input type="text" value={preregConfig.cta_subtexto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_subtexto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Es rápido, gratuito y 100% en línea" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ VIGENCIA / COUNTDOWN ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-orange-500 text-white rounded-lg">⏰ Vigencia</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Fecha de cierre</label>
+                            <input type="date" value={preregConfig.fecha_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, fecha_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del contador</label>
+                            <input type="text" value={preregConfig.mensaje_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, mensaje_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Cierre de convocatoria en:" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ TARJETA PRINCIPAL ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-green-600 text-white rounded-lg">📋 Tarjeta Principal</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de la tarjeta</label>
+                            <input type="text" value={preregConfig.card_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Regístrate" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
+                            <input type="text" value={preregConfig.card_boton_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_boton_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Iniciar Pre-Registro →" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
+                            <textarea value={preregConfig.card_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_descripcion: e.target.value })} rows={3} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Checklist (un ítem por línea)</label>
+                            <textarea
+                                value={Array.isArray(preregConfig.card_checklist_json) ? preregConfig.card_checklist_json.join('\n') : ''}
+                                onChange={(e) => setPreregConfig({ ...preregConfig, card_checklist_json: e.target.value.split('\n').filter(l => l.trim()) })}
+                                rows={5} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                placeholder="Datos personales y de contacto&#10;Elección de carrera técnica&#10;etc."
+                            />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ PASOS ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-purple-600 text-white rounded-lg">🔢 Sección Pasos</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                            <input type="text" value={preregConfig.pasos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Cómo funciona?" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                            <input type="text" value={preregConfig.pasos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        <label className="text-xs font-bold opacity-60 block">Pasos (agrega/edita)</label>
+                        {(preregConfig.pasos_json || []).map((paso, idx) => (
+                            <div key={idx} className={`p-3 rounded-xl border flex flex-col md:flex-row gap-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <input type="text" value={paso.num} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], num: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`w-16 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="#" />
+                                <input type="text" value={paso.titulo} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], titulo: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Título del paso" />
+                                <input type="text" value={paso.desc} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], desc: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Descripción" />
+                                <button type="button" onClick={() => { const arr = preregConfig.pasos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
+                            </div>
+                        ))}
+                        <button type="button" onClick={() => setPreregConfig({ ...preregConfig, pasos_json: [...(preregConfig.pasos_json || []), { num: String((preregConfig.pasos_json?.length || 0) + 1).padStart(2, '0'), titulo: '', desc: '' }] })} className="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 font-bold text-sm hover:bg-purple-200 transition-colors">+ Agregar Paso</button>
+                    </div>
+                </fieldset>
+
+                {/* ═══ CARRERAS ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-cyan-600 text-white rounded-lg">🎓 Sección Carreras</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                            <input type="text" value={preregConfig.carreras_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Carreras Técnicas Disponibles" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                            <input type="text" value={preregConfig.carreras_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+                    <p className={`mt-3 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>💡 Las carreras se gestionan desde la sección "Carreras" del panel principal.</p>
+                </fieldset>
+
+                {/* ═══ REQUISITOS ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-amber-500 text-white rounded-lg">📋 Sección Requisitos</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                            <input type="text" value={preregConfig.requisitos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                            <input type="text" value={preregConfig.requisitos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        <label className="text-xs font-bold opacity-60 block">Requisitos (agrega/edita)</label>
+                        {(preregConfig.requisitos_json || []).map((req, idx) => (
+                            <div key={idx} className={`p-3 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <input type="text" value={req.icon} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`w-14 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🪪" />
+                                <input type="text" value={req.txt} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], txt: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-slate-200'}`} placeholder="Texto del requisito" />
+                                <button type="button" onClick={() => { const arr = preregConfig.requisitos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
+                            </div>
+                        ))}
+                        <button type="button" onClick={() => setPreregConfig({ ...preregConfig, requisitos_json: [...(preregConfig.requisitos_json || []), { icon: '📌', txt: '' }] })} className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 font-bold text-sm hover:bg-amber-200 transition-colors">+ Agregar Requisito</button>
+                    </div>
+                </fieldset>
+
+                {/* ═══ CTA FINAL ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-lg">🚀 CTA Final</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                            <input type="text" value={preregConfig.cta_final_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Listo para unirte al CBTa 134?" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
+                            <input type="text" value={preregConfig.cta_final_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
+                            <input type="text" value={preregConfig.cta_final_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Comenzar Pre-Registro" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón</label>
+                            <input type="text" value={preregConfig.cta_final_boton_sub || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton_sub: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Formulario en línea · Ficha PDF inmediata" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ CONVOCATORIA CERRADA ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-red-50 bg-red-50/30'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-600 text-white rounded-lg">🚫 Página Cerrada</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el módulo está desactivado</p>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
+                            <input type="text" value={preregConfig.cerrada_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🚫 Convocatoria Cerrada" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                            <input type="text" value={preregConfig.cerrada_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="El proceso de pre-registro ha finalizado" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
+                            <textarea value={preregConfig.cerrada_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_mensaje: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ FORMULARIO ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white rounded-lg">📝 Formulario</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran en el formulario de pre-registro</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge del formulario</label>
+                            <input type="text" value={preregConfig.form_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Nuevo Ingreso 2025–2026" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título del formulario</label>
+                            <input type="text" value={preregConfig.form_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Registro de Aspirantes" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo del formulario</label>
+                            <input type="text" value={preregConfig.form_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Indicaciones en la Ficha PDF</label>
+                            <input type="text" value={preregConfig.indicaciones_ficha || ''} onChange={(e) => setPreregConfig({ ...preregConfig, indicaciones_ficha: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Acude con tu ficha impresa en las fechas indicadas." />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ TARJETA PÁGINA PRINCIPAL ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-pink-600 text-white rounded-lg">🏠 Tarjeta en Página Principal</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>La tarjeta que aparece en la página de inicio cuando el módulo está activo</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
+                            <input type="text" value={preregConfig.home_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="NUEVO INGRESO 2025" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
+                            <input type="text" value={preregConfig.home_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📝" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                            <input type="text" value={preregConfig.home_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Hoy!" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del Botón</label>
+                            <input type="text" value={preregConfig.home_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Pre-Registro →" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
+                            <textarea value={preregConfig.home_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_descripcion: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* ═══ TÍTULOS DE SECCIONES DEL FORMULARIO ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-violet-600 text-white rounded-lg">📑 Títulos de Pasos del Formulario</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los títulos y emojis de cada sección del formulario. Puedes incluir emojis al inicio.</p>
+                    <div className="space-y-3">
+                        {[
+                            { key: 'form_titulo_paso1', label: 'Paso 1 – Título', ph: '👤 Datos del Aspirante' },
+                            { key: 'form_titulo_paso2', label: 'Paso 2 – Título', ph: '🎓 Carrera Técnica' },
+                            { key: 'form_desc_paso2', label: 'Paso 2 – Descripción', ph: 'Selecciona la carrera...' },
+                            { key: 'form_titulo_paso3', label: 'Paso 3 – Título', ph: '🏫 Escuela de Procedencia' },
+                            { key: 'form_desc_paso3', label: 'Paso 3 – Descripción', ph: 'Proporciona los datos...' },
+                            { key: 'form_titulo_paso4', label: 'Paso 4 – Título', ph: '👨‍👩‍👦 Datos del Tutor' },
+                            { key: 'form_desc_paso4', label: 'Paso 4 – Descripción', ph: 'Proporciona los datos...' },
+                            { key: 'form_titulo_paso5', label: 'Paso 5 – Título', ph: '✅ Confirmación de Datos' },
+                            { key: 'form_desc_paso5', label: 'Paso 5 – Descripción', ph: 'Revisa que todos tus datos...' },
+                        ].map((f) => (
+                            <div key={f.key} className="flex gap-2 items-center">
+                                <span className={`text-xs font-bold w-36 shrink-0 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{f.label}</span>
+                                <input type="text" value={preregConfig[f.key] || ''} onChange={(e) => setPreregConfig({ ...preregConfig, [f.key]: e.target.value })} className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder={f.ph} />
+                            </div>
+                        ))}
+                    </div>
+                </fieldset>
+
+                {/* ═══ STEPPER ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-teal-600 text-white rounded-lg">🔘 Stepper (Barra de Progreso)</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los pasos que se muestran en la barra de progreso del formulario</p>
+                    <div className="space-y-2">
+                        {(preregConfig.stepper_json || []).map((step, idx) => (
+                            <div key={idx} className={`p-2 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <input type="text" value={step.icon} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`w-12 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🎓" />
+                                <input type="text" value={step.label} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], label: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Nombre del paso" />
+                            </div>
+                        ))}
+                    </div>
+                </fieldset>
+
+                {/* ═══ PÁGINA DE ÉXITO ═══ */}
+                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-lime-600 text-white rounded-lg">🎉 Página de Éxito</legend>
+                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el aspirante completa su pre-registro</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
+                            <input type="text" value={preregConfig.exito_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🎉" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                            <input type="text" value={preregConfig.exito_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Registro Exitoso!" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
+                            <input type="text" value={preregConfig.exito_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_mensaje: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Tu pre-registro ha sido recibido..." />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón PDF</label>
+                            <input type="text" value={preregConfig.exito_btn_pdf || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_pdf: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📄 Descargar Ficha PDF" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón Inicio</label>
+                            <input type="text" value={preregConfig.exito_btn_inicio || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_inicio: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Inicio" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div className="flex justify-end pt-4 pb-10">
+                    <button
+                        type="submit"
+                        disabled={preregConfigLoading}
+                        className={`px-10 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all ${darkMode ? 'bg-blue-600 text-white' : 'bg-blue-800 text-white'}`}
+                    >
+                        <span className="material-symbols-outlined">{preregConfigLoading ? 'sync' : 'save'}</span>
+                        {preregConfigLoading ? 'Guardando cambios...' : 'Guardar Toda la Configuración'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
 
     const addAllowedAccount = async () => {
         if (!newAllowedEmail.trim()) return;
@@ -2009,11 +2358,20 @@ const MaestrosAdmin = () => {
 
     // GALERÍA CRUD
     const fetchGalleryData = async () => {
-        const { data } = await supabase
-            .from('gallery_items')
-            .select('*')
-            .order('order_index', { ascending: true });
-        setGalleryItems(data || []);
+        try {
+            const { data, error } = await supabase
+                .from('gallery_items')
+                .select('*')
+                .order('order_index', { ascending: true });
+
+            if (error) {
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
+                console.error('Error fetching gallery:', error);
+            }
+            setGalleryItems(data || []);
+        } catch (err) {
+            console.warn('Silent catch in gallery fetch:', err);
+        }
     };
 
     const handleUploadGalleryImage = async () => {
@@ -2022,62 +2380,97 @@ const MaestrosAdmin = () => {
         const fileExt = galleryFile.name.split('.').pop();
         const fileName = `gallery-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-            .from('gallery_media')
-            .upload(fileName, galleryFile, { upsert: true });
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from('gallery_media')
+                .upload(fileName, galleryFile, { upsert: true });
 
-        if (uploadError) {
-            alert('Error subiendo imagen: ' + uploadError.message);
+            if (uploadError) {
+                alert('Error subiendo imagen: ' + uploadError.message);
+                setUploadingGallery(false);
+                return;
+            }
+
+            const { data } = supabase.storage
+                .from('gallery_media')
+                .getPublicUrl(fileName);
+
+            let publicUrl = data.publicUrl;
+
+            // Verificación de URL pública para evitar errores 400
+            // Supabase URLs públicas deberían contener /object/public/
+            if (publicUrl && !publicUrl.includes('/object/public/')) {
+                publicUrl = publicUrl.replace('/object/', '/object/public/');
+            }
+
+            console.log('✅ Imagen subida con éxito. URL:', publicUrl);
+
+            setGalleryForm({
+                ...galleryForm,
+                image_url: publicUrl
+            });
+            setGalleryFile(null);
             setUploadingGallery(false);
-            return;
+        } catch (err) {
+            console.error('Excepción en upload:', err);
+            alert('Error inesperado al subir imagen.');
+            setUploadingGallery(false);
         }
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('gallery_media')
-            .getPublicUrl(fileName);
-
-        setGalleryForm({
-            ...galleryForm,
-            image_url: publicUrl
-        });
-        setGalleryFile(null);
-        setUploadingGallery(false);
     };
 
     const handleSaveGalleryItem = async (e) => {
         e.preventDefault();
-        if (!galleryForm.title || !galleryForm.image_url) return;
 
-        if (editingGalleryItem) {
-            const { error } = await supabase
-                .from('gallery_items')
-                .update({
-                    section: galleryForm.section,
-                    title: galleryForm.title,
-                    description: galleryForm.description,
-                    image_url: galleryForm.image_url
-                })
-                .eq('id', editingGalleryItem.id);
-            if (!error) {
-                setEditingGalleryItem(null);
-                setGalleryForm({ section: 'instalaciones', title: '', description: '', image_url: '', is_locked: false });
-                fetchGalleryData();
+        // Determinar la sección final
+        const finalSection = useCustomSection ? customSection.trim() : galleryForm.section;
+
+        if (!finalSection) {
+            alert('Por favor selecciona o especifica una sección.');
+            return;
+        }
+        if (!galleryForm.title || !galleryForm.image_url) {
+            alert('El título y la imagen son obligatorios.');
+            return;
+        }
+
+        const galleryData = {
+            section: finalSection,
+            title: galleryForm.title,
+            description: galleryForm.description,
+            image_url: galleryForm.image_url,
+            is_locked: galleryForm.is_locked
+        };
+
+        try {
+            if (editingGalleryItem) {
+                const { error } = await supabase
+                    .from('gallery_items')
+                    .update(galleryData)
+                    .eq('id', editingGalleryItem.id);
+
+                if (error) throw error;
+                alert('✅ Elemento actualizado correctamente.');
+            } else {
+                const { error } = await supabase
+                    .from('gallery_items')
+                    .insert([{
+                        ...galleryData,
+                        order_index: galleryItems.length + 1
+                    }]);
+
+                if (error) throw error;
+                alert('✅ Elemento creado correctamente.');
             }
-        } else {
-            const { error } = await supabase
-                .from('gallery_items')
-                .insert([{
-                    section: galleryForm.section,
-                    title: galleryForm.title,
-                    description: galleryForm.description,
-                    image_url: galleryForm.image_url,
-                    is_locked: galleryForm.is_locked,
-                    order_index: galleryItems.length + 1
-                }]);
-            if (!error) {
-                setGalleryForm({ section: 'instalaciones', title: '', description: '', image_url: '', is_locked: false });
-                fetchGalleryData();
-            }
+
+            // Limpiar formulario
+            setEditingGalleryItem(null);
+            setGalleryForm({ section: 'instalaciones', title: '', description: '', image_url: '', is_locked: false });
+            setCustomSection('');
+            setUseCustomSection(false);
+            fetchGalleryData();
+        } catch (err) {
+            console.error('Error al guardar galería:', err);
+            alert('❌ Error al guardar datos: ' + (err.message || 'Error desconocido'));
         }
     };
 
@@ -2702,7 +3095,8 @@ const MaestrosAdmin = () => {
 
         setGmailSending(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error: authError } = await supabase.auth.getSession();
+            if (authError && authError.name !== 'AbortError') console.error('Auth error in gmail:', authError);
             const senderEmailRaw = (gmailEmail || session?.user?.email || user?.email || localStorage.getItem('gmail_user_email') || '').trim();
             const { emails: recipients, filteredCount, missingEmailsCount, invalidEmailsCount } = getRecipientEmails(session?.user?.id || user?.id, senderEmailRaw);
 
@@ -2986,13 +3380,17 @@ const MaestrosAdmin = () => {
 
             // Si no hay en localStorage, intentar de la sesión actual
             if (!tokenToVerify) {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.provider_token) {
-                    tokenToVerify = session.provider_token;
-                    emailFromStorage = session.user?.email || '';
-                    // Guardar para uso futuro
-                    localStorage.setItem('gmail_provider_token', tokenToVerify);
-                    localStorage.setItem('gmail_user_email', emailFromStorage);
+                try {
+                    const { data: { session }, error: authError } = await supabase.auth.getSession();
+                    if (session?.provider_token) {
+                        tokenToVerify = session.provider_token;
+                        emailFromStorage = session.user?.email || '';
+                        // Guardar para uso futuro
+                        localStorage.setItem('gmail_provider_token', tokenToVerify);
+                        localStorage.setItem('gmail_user_email', emailFromStorage);
+                    }
+                } catch (e) {
+                    console.warn('Silent auth check error in gmail status:', e);
                 }
             }
 
@@ -3277,7 +3675,7 @@ const MaestrosAdmin = () => {
                     </div>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1 mt-4 lg:mt-0 overflow-y-auto overscroll-contain pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <nav className="flex-1 px-4 space-y-1 mt-4 lg:mt-0 overflow-y-auto overscroll-contain pb-10">
                     <button
                         onClick={() => { setActiveNav('dashboard'); setSidebarOpen(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeNav === 'dashboard'
@@ -3285,6 +3683,30 @@ const MaestrosAdmin = () => {
                             : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
                     >
                         <span className="material-symbols-outlined">dashboard</span> Panel Principal
+                    </button>
+                    <button
+                        onClick={() => { setActiveNav('gallery'); setSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'gallery'
+                            ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
+                            : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
+                    >
+                        <span className="material-symbols-outlined">photo_library</span> Galería
+                    </button>
+                    <button
+                        onClick={() => { setActiveNav('admission'); setSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'admission'
+                            ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
+                            : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
+                    >
+                        <span className="material-symbols-outlined">assignment_ind</span> Admisión y Pre-Registro
+                    </button>
+                    <button
+                        onClick={() => { setActiveNav('maestros'); setSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'maestros'
+                            ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
+                            : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
+                    >
+                        <span className="material-symbols-outlined">co_present</span> Maestros
                     </button>
                     <button
                         onClick={() => { setActiveNav('alumnos'); setSidebarOpen(false); }}
@@ -3319,22 +3741,6 @@ const MaestrosAdmin = () => {
                         <span className="material-symbols-outlined">engineering</span> Carreras
                     </button>
                     <button
-                        onClick={() => { setActiveNav('maestros'); setSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'maestros'
-                            ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
-                            : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
-                    >
-                        <span className="material-symbols-outlined">co_present</span> Maestros
-                    </button>
-                    <button
-                        onClick={() => { setActiveNav('admission'); setSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'admission'
-                            ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
-                            : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
-                    >
-                        <span className="material-symbols-outlined">assignment</span> Admisión
-                    </button>
-                    <button
                         onClick={() => { setActiveNav('baetam'); setSidebarOpen(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'baetam'
                             ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
@@ -3359,12 +3765,12 @@ const MaestrosAdmin = () => {
                         <span className="material-symbols-outlined">info</span> Acerca
                     </button>
                     <button
-                        onClick={() => { setActiveNav('gallery'); setSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'gallery'
+                        onClick={() => { setActiveNav('preregistros'); setSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeNav === 'preregistros'
                             ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-800')
                             : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
                     >
-                        <span className="material-symbols-outlined">photo_library</span> Galería
+                        <span className="material-symbols-outlined">how_to_reg</span> Pre-Registros
                     </button>
                     <button
                         onClick={() => { setActiveNav('ui'); setSidebarOpen(false); }}
@@ -3381,13 +3787,6 @@ const MaestrosAdmin = () => {
                             : (darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}`}
                     >
                         <span className="material-symbols-outlined">badge</span> Créditos
-                    </button>
-                    <button
-                        onClick={() => { setActiveNav('preregistros'); setSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeNav === 'preregistros' ? 'bg-blue-800 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                        <span className="material-symbols-outlined">assignment_ind</span>
-                        <span className="font-semibold">Pre-Registros</span>
                     </button>
                     <button
                         onClick={() => { setActiveNav('chatbot'); setSidebarOpen(false); }}
@@ -3520,6 +3919,97 @@ const MaestrosAdmin = () => {
                                         <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Configuración</button>
                                     </div>
                                 </form>
+                            </div>
+                        </section>
+
+                        {/* --- TABLA DE PRE-REGISTROS (ASPIRANTES) --- */}
+                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                <div>
+                                    <h3 className="text-xl font-bold flex items-center gap-2 text-blue-600">
+                                        <span className="material-symbols-outlined">assignment_ind</span> Alumnos Pre-Registrados (Aspirantes)
+                                    </h3>
+                                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Lista de alumnos que han completado su pre-registro para nuevo ingreso.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={fetchPreregistros} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Actualizar lista">
+                                        <span className="material-symbols-outlined">refresh</span>
+                                    </button>
+                                    <button
+                                        onClick={exportPreregistrosExcel}
+                                        className="p-2 rounded-xl bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                        title="Descargar Excel"
+                                    >
+                                        <span className="material-symbols-outlined">download</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPreregConfig(!showPreregConfig)}
+                                        className={`p-2 rounded-xl transition-all border ${showPreregConfig ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                        title={showPreregConfig ? 'Cerrar Configuración' : 'Configurar Landing de Pre-Registro'}
+                                    >
+                                        <span className="material-symbols-outlined">{showPreregConfig ? 'visibility' : 'settings'}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {showPreregConfig && (
+                                <div className="mb-8 p-6 rounded-3xl border border-blue-100 bg-blue-50/10 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-bold text-blue-800 flex items-center gap-2">
+                                            <span className="material-symbols-outlined">settings</span> Configuración del Módulo de Pre-Registro
+                                        </h4>
+                                        <button onClick={() => setShowPreregConfig(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                    {renderPreregConfigForm()}
+                                </div>
+                            )}
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-slate-100'}`}>
+                                            <th className="py-4 px-2 font-bold text-sm">Folio</th>
+                                            <th className="py-4 px-2 font-bold text-sm">Nombre Completo</th>
+                                            <th className="py-4 px-2 font-bold text-sm">CURP</th>
+                                            <th className="py-4 px-2 font-bold text-sm">Carrera</th>
+                                            <th className="py-4 px-2 font-bold text-sm">Estatus</th>
+                                            <th className="py-4 px-2 font-bold text-sm">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {preregistros.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="6" className="py-10 text-center opacity-50 italic">No hay registros de aspirantes aún.</td>
+                                            </tr>
+                                        ) : (
+                                            preregistros.map((reg) => (
+                                                <tr key={reg.id} className={`border-b ${darkMode ? 'border-slate-800/50' : 'border-slate-50'}`}>
+                                                    <td className="py-4 px-2 text-sm font-mono text-blue-600">{reg.folio}</td>
+                                                    <td className="py-4 px-2 text-sm">
+                                                        <div className="font-bold">{reg.nombre} {reg.apellido_paterno} {reg.apellido_materno}</div>
+                                                        <div className="text-xs opacity-50">{reg.email} • {reg.telefono}</div>
+                                                    </td>
+                                                    <td className="py-4 px-2 text-sm font-mono uppercase">{reg.curp}</td>
+                                                    <td className="py-4 px-2 text-sm">{reg.carrera_opcion1}</td>
+                                                    <td className="py-4 px-2 text-sm">
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${reg.status === 'completado' ? 'bg-green-100 text-green-700' :
+                                                            reg.status === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100'
+                                                            }`}>
+                                                            {reg.status || 'Pendiente'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-2 text-sm">
+                                                        <button className="text-blue-500 hover:underline">Ver ficha</button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </section>
 
@@ -4472,39 +4962,67 @@ const MaestrosAdmin = () => {
                                         <span className="material-symbols-outlined text-blue-800">photo_library</span> Galería
                                     </h3>
                                     <form onSubmit={handleSaveGalleryItem} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <select
-                                            value={galleryForm.section}
-                                            onChange={(e) => setGalleryForm({ ...galleryForm, section: e.target.value })}
-                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        >
-                                            <option value="instalaciones">Instalaciones</option>
-                                            <option value="actividades">Actividades</option>
-                                            <option value="clubs">Clubs</option>
-                                            <option value="cbta">CBTa 134</option>
-                                            <option value="galeria">Galería General</option>
-                                        </select>
-                                        <input
-                                            type="text"
-                                            placeholder="Título"
-                                            value={galleryForm.title}
-                                            onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
-                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Descripción"
-                                            value={galleryForm.description}
-                                            onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
-                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="URL de imagen"
-                                            value={galleryForm.image_url}
-                                            onChange={(e) => setGalleryForm({ ...galleryForm, image_url: e.target.value })}
-                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs font-bold uppercase text-slate-500">Sección / Apartado</label>
+                                            {useCustomSection ? (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Nombre de la nueva sección"
+                                                        value={customSection}
+                                                        onChange={(e) => setCustomSection(e.target.value)}
+                                                        className={`flex-1 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                    />
+                                                    <button type="button" onClick={() => setUseCustomSection(false)} className="px-3 bg-slate-200 rounded-xl text-xs font-bold">Lista</button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={galleryForm.section}
+                                                        onChange={(e) => setGalleryForm({ ...galleryForm, section: e.target.value })}
+                                                        className={`flex-1 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                    >
+                                                        <option value="instalaciones">Instalaciones</option>
+                                                        <option value="actividades">Actividades</option>
+                                                        <option value="clubs">Clubs</option>
+                                                        <option value="cbta">CBTa 134</option>
+                                                        <option value="galeria">Galería General</option>
+                                                    </select>
+                                                    <button type="button" onClick={() => setUseCustomSection(true)} className="px-3 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold">Nueva</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs font-bold uppercase text-slate-500">Título de la imagen</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Título"
+                                                value={galleryForm.title}
+                                                onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 flex flex-col gap-2">
+                                            <label className="text-xs font-bold uppercase text-slate-500">Descripción detallada</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Descripción"
+                                                value={galleryForm.description}
+                                                onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 flex flex-col gap-2">
+                                            <label className="text-xs font-bold uppercase text-slate-500">URL de imagen (o sube una abajo)</label>
+                                            <input
+                                                type="text"
+                                                placeholder="URL de imagen"
+                                                value={galleryForm.image_url}
+                                                onChange={(e) => setGalleryForm({ ...galleryForm, image_url: e.target.value })}
+                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center mt-2">
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -4524,44 +5042,71 @@ const MaestrosAdmin = () => {
                                                     href={galleryForm.image_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-sm text-blue-500"
+                                                    className="text-sm text-blue-500 font-bold flex items-center gap-1"
                                                 >
+                                                    <span className="material-symbols-outlined text-sm">open_in_new</span>
                                                     Ver imagen
                                                 </a>
                                             )}
                                         </div>
-                                        <label className="flex items-center gap-2 text-sm">
+                                        <label className="flex items-center gap-2 text-sm mt-2">
                                             <input
                                                 type="checkbox"
                                                 checked={galleryForm.is_locked}
                                                 onChange={(e) => setGalleryForm({ ...galleryForm, is_locked: e.target.checked })}
+                                                className="w-4 h-4 rounded"
                                             />
-                                            Bloquear (no se puede eliminar)
+                                            Bloquear (no se puede eliminar esta imagen)
                                         </label>
-                                        <div className="md:col-span-2">
-                                            <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                                {editingGalleryItem ? 'Actualizar' : 'Agregar'}
+                                        <div className="md:col-span-2 flex gap-3 mt-4">
+                                            <button type="submit" className="px-8 py-3 bg-blue-800 text-white font-bold rounded-xl shadow-lg shadow-blue-800/20">
+                                                {editingGalleryItem ? '💾 Guardar Cambios' : '➕ Agregar a Galería'}
                                             </button>
+                                            {editingGalleryItem && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingGalleryItem(null);
+                                                        setGalleryForm({ section: 'instalaciones', title: '', description: '', image_url: '', is_locked: false });
+                                                        setUseCustomSection(false);
+                                                    }}
+                                                    className="px-6 py-3 bg-slate-200 text-slate-700 font-bold rounded-xl"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            )}
                                         </div>
                                     </form>
                                 </div>
                             </section>
 
                             <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-lg font-bold mb-4">Imágenes</h3>
-                                <div className="space-y-3">
+                                <h3 className="text-lg font-bold mb-4">Imágenes Actuales</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {galleryItems.map((item) => (
-                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <img src={item.image_url} alt={item.title} className="w-14 h-14 rounded-lg object-cover" />
+                                        <div key={item.id} className={`p-4 rounded-2xl flex items-center justify-between ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative group">
+                                                    <img src={item.image_url} alt={item.title} className="w-16 h-16 rounded-xl object-cover shadow-md" />
+                                                    {item.is_locked && (
+                                                        <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-1 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                                            <span className="material-symbols-outlined text-[10px]">lock</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div>
-                                                    <div className="font-semibold">{item.title}</div>
-                                                    <div className="text-xs text-slate-500">{item.section} • {item.description}</div>
+                                                    <div className="font-bold text-sm md:text-base">{item.title}</div>
+                                                    <div className="text-[10px] md:text-xs flex items-center gap-2 mt-1 flex-wrap">
+                                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase">{item.section}</span>
+                                                        <span className="text-slate-500 line-clamp-1">{item.description}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => {
+                                                        const defaultSections = ['instalaciones', 'actividades', 'clubs', 'cbta', 'galeria'];
+                                                        const isCustom = !defaultSections.includes(item.section);
                                                         setEditingGalleryItem(item);
                                                         setGalleryForm({
                                                             section: item.section,
@@ -4570,17 +5115,27 @@ const MaestrosAdmin = () => {
                                                             image_url: item.image_url,
                                                             is_locked: item.is_locked
                                                         });
+                                                        if (isCustom) {
+                                                            setUseCustomSection(true);
+                                                            setCustomSection(item.section);
+                                                        } else {
+                                                            setUseCustomSection(false);
+                                                        }
+                                                        // Scroll up to form
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
                                                     }}
-                                                    className="text-blue-500"
+                                                    className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                                                    title="Editar"
                                                 >
-                                                    Editar
+                                                    <span className="material-symbols-outlined text-sm">edit</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteGalleryItem(item)}
-                                                    className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    className={`p-2 rounded-lg transition ${item.is_locked ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
                                                     disabled={item.is_locked}
+                                                    title={item.is_locked ? 'Bloqueado' : 'Eliminar'}
                                                 >
-                                                    Eliminar
+                                                    <span className="material-symbols-outlined text-sm">delete</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -5999,356 +6554,28 @@ const MaestrosAdmin = () => {
                                                 </p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={fetchPreregistros} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                                <button onClick={fetchPreregistros} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Actualizar lista">
                                                     <span className="material-symbols-outlined">refresh</span>
+                                                </button>
+                                                <button
+                                                    onClick={exportPreregistrosExcel}
+                                                    className="p-2 rounded-xl bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                                    title="Descargar Excel"
+                                                >
+                                                    <span className="material-symbols-outlined">download</span>
                                                 </button>
                                                 <button
                                                     onClick={() => setShowPreregConfig(!showPreregConfig)}
                                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showPreregConfig ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
                                                 >
                                                     <span className="material-symbols-outlined">{showPreregConfig ? 'visibility' : 'settings'}</span>
-                                                    <span className="font-bold">{showPreregConfig ? 'Ver Registros' : 'Configurar Módulo'}</span>
+                                                    <span className="font-bold">{showPreregConfig ? 'Ver' : 'Configurar'}</span>
                                                 </button>
                                             </div>
                                         </div>
 
                                         {showPreregConfig ? (
-                                            <div className="space-y-6">
-                                                {/* ═══ ESTADO DEL MÓDULO ═══ */}
-                                                <div className={`p-5 rounded-3xl border ${preregConfig.habilitado ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${preregConfig.habilitado ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                                                <span className="material-symbols-outlined">{preregConfig.habilitado ? 'check_circle' : 'cancel'}</span>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold">Estatus del Módulo</h4>
-                                                                <p className="text-xs opacity-70">Si se desactiva, la landing muestra "Convocatoria Cerrada"</p>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setPreregConfig({ ...preregConfig, habilitado: !preregConfig.habilitado })}
-                                                            className={`px-5 py-2 rounded-xl font-bold text-sm transition-all ${preregConfig.habilitado ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
-                                                        >
-                                                            {preregConfig.habilitado ? 'Desactivar' : 'Activar'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <form onSubmit={handleSavePreregistroConfig} className="space-y-6">
-
-                                                    {/* ═══ HERO / ENCABEZADO ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-600 text-white rounded-lg">🏠 Hero / Encabezado</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge (insignia superior)</label>
-                                                                <input type="text" value={preregConfig.badge_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, badge_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📋 Convocatoria Abierta · Ciclo 2025–2026" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título principal</label>
-                                                                <input type="text" value={preregConfig.titulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, titulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
-                                                                <input type="text" value={preregConfig.subtitulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, subtitulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón CTA</label>
-                                                                <input type="text" value={preregConfig.cta_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Ahora!" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón CTA</label>
-                                                                <input type="text" value={preregConfig.cta_subtexto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_subtexto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Es rápido, gratuito y 100% en línea" />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ VIGENCIA / COUNTDOWN ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-orange-500 text-white rounded-lg">⏰ Vigencia</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Fecha de cierre</label>
-                                                                <input type="date" value={preregConfig.fecha_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, fecha_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del contador</label>
-                                                                <input type="text" value={preregConfig.mensaje_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, mensaje_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Cierre de convocatoria en:" />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ TARJETA PRINCIPAL ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-green-600 text-white rounded-lg">📋 Tarjeta Principal</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de la tarjeta</label>
-                                                                <input type="text" value={preregConfig.card_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Regístrate" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
-                                                                <input type="text" value={preregConfig.card_boton_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_boton_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Iniciar Pre-Registro →" />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
-                                                                <textarea value={preregConfig.card_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_descripcion: e.target.value })} rows={3} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Checklist (un ítem por línea)</label>
-                                                                <textarea
-                                                                    value={Array.isArray(preregConfig.card_checklist_json) ? preregConfig.card_checklist_json.join('\n') : ''}
-                                                                    onChange={(e) => setPreregConfig({ ...preregConfig, card_checklist_json: e.target.value.split('\n').filter(l => l.trim()) })}
-                                                                    rows={5} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                                                    placeholder="Datos personales y de contacto&#10;Elección de carrera técnica&#10;etc."
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ PASOS ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-purple-600 text-white rounded-lg">🔢 Sección Pasos</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                                <input type="text" value={preregConfig.pasos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Cómo funciona?" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                                <input type="text" value={preregConfig.pasos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-4 space-y-3">
-                                                            <label className="text-xs font-bold opacity-60 block">Pasos (agrega/edita)</label>
-                                                            {(preregConfig.pasos_json || []).map((paso, idx) => (
-                                                                <div key={idx} className={`p-3 rounded-xl border flex flex-col md:flex-row gap-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                    <input type="text" value={paso.num} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], num: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`w-16 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="#" />
-                                                                    <input type="text" value={paso.titulo} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], titulo: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Título del paso" />
-                                                                    <input type="text" value={paso.desc} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], desc: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Descripción" />
-                                                                    <button type="button" onClick={() => { const arr = preregConfig.pasos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
-                                                                </div>
-                                                            ))}
-                                                            <button type="button" onClick={() => setPreregConfig({ ...preregConfig, pasos_json: [...(preregConfig.pasos_json || []), { num: String((preregConfig.pasos_json?.length || 0) + 1).padStart(2, '0'), titulo: '', desc: '' }] })} className="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 font-bold text-sm hover:bg-purple-200 transition-colors">+ Agregar Paso</button>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ CARRERAS ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-cyan-600 text-white rounded-lg">🎓 Sección Carreras</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                                <input type="text" value={preregConfig.carreras_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Carreras Técnicas Disponibles" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                                <input type="text" value={preregConfig.carreras_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                        </div>
-                                                        <p className={`mt-3 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>💡 Las carreras se gestionan desde la sección "Carreras" del panel principal.</p>
-                                                    </fieldset>
-
-                                                    {/* ═══ REQUISITOS ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-amber-500 text-white rounded-lg">📋 Sección Requisitos</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                                <input type="text" value={preregConfig.requisitos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                                <input type="text" value={preregConfig.requisitos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-4 space-y-3">
-                                                            <label className="text-xs font-bold opacity-60 block">Requisitos (agrega/edita)</label>
-                                                            {(preregConfig.requisitos_json || []).map((req, idx) => (
-                                                                <div key={idx} className={`p-3 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                    <input type="text" value={req.icon} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`w-14 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🪪" />
-                                                                    <input type="text" value={req.txt} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], txt: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Texto del requisito" />
-                                                                    <button type="button" onClick={() => { const arr = preregConfig.requisitos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
-                                                                </div>
-                                                            ))}
-                                                            <button type="button" onClick={() => setPreregConfig({ ...preregConfig, requisitos_json: [...(preregConfig.requisitos_json || []), { icon: '📌', txt: '' }] })} className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 font-bold text-sm hover:bg-amber-200 transition-colors">+ Agregar Requisito</button>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ CTA FINAL ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-lg">🚀 CTA Final</legend>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                                <input type="text" value={preregConfig.cta_final_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Listo para unirte al CBTa 134?" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
-                                                                <input type="text" value={preregConfig.cta_final_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
-                                                                <input type="text" value={preregConfig.cta_final_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Comenzar Pre-Registro" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón</label>
-                                                                <input type="text" value={preregConfig.cta_final_boton_sub || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton_sub: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Formulario en línea · Ficha PDF inmediata" />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ CONVOCATORIA CERRADA ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-red-50 bg-red-50/30'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-600 text-white rounded-lg">🚫 Página Cerrada</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el módulo está desactivado</p>
-                                                        <div className="grid grid-cols-1 gap-3">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
-                                                                <input type="text" value={preregConfig.cerrada_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🚫 Convocatoria Cerrada" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                                <input type="text" value={preregConfig.cerrada_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="El proceso de pre-registro ha finalizado" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
-                                                                <textarea value={preregConfig.cerrada_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_mensaje: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ FORMULARIO ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white rounded-lg">📝 Formulario</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran en el formulario de pre-registro</p>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge del formulario</label>
-                                                                <input type="text" value={preregConfig.form_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Nuevo Ingreso 2025–2026" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título del formulario</label>
-                                                                <input type="text" value={preregConfig.form_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Registro de Aspirantes" />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo del formulario</label>
-                                                                <input type="text" value={preregConfig.form_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Indicaciones en la Ficha PDF</label>
-                                                                <input type="text" value={preregConfig.indicaciones_ficha || ''} onChange={(e) => setPreregConfig({ ...preregConfig, indicaciones_ficha: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Acude con tu ficha impresa en las fechas indicadas." />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ TARJETA PÁGINA PRINCIPAL ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-pink-600 text-white rounded-lg">🏠 Tarjeta en Página Principal</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>La tarjeta que aparece en la página de inicio cuando el módulo está activo</p>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
-                                                                <input type="text" value={preregConfig.home_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="NUEVO INGRESO 2025" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
-                                                                <input type="text" value={preregConfig.home_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📝" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                                <input type="text" value={preregConfig.home_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Hoy!" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del Botón</label>
-                                                                <input type="text" value={preregConfig.home_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Pre-Registro →" />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
-                                                                <textarea value={preregConfig.home_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_descripcion: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ TÍTULOS DE SECCIONES DEL FORMULARIO ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-violet-600 text-white rounded-lg">📑 Títulos de Pasos del Formulario</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los títulos y emojis de cada sección del formulario. Puedes incluir emojis al inicio.</p>
-                                                        <div className="space-y-3">
-                                                            {[
-                                                                { key: 'form_titulo_paso1', label: 'Paso 1 – Título', ph: '👤 Datos del Aspirante' },
-                                                                { key: 'form_titulo_paso2', label: 'Paso 2 – Título', ph: '🎓 Carrera Técnica' },
-                                                                { key: 'form_desc_paso2', label: 'Paso 2 – Descripción', ph: 'Selecciona la carrera...' },
-                                                                { key: 'form_titulo_paso3', label: 'Paso 3 – Título', ph: '🏫 Escuela de Procedencia' },
-                                                                { key: 'form_desc_paso3', label: 'Paso 3 – Descripción', ph: 'Proporciona los datos...' },
-                                                                { key: 'form_titulo_paso4', label: 'Paso 4 – Título', ph: '👨‍👩‍👦 Datos del Tutor' },
-                                                                { key: 'form_desc_paso4', label: 'Paso 4 – Descripción', ph: 'Proporciona los datos...' },
-                                                                { key: 'form_titulo_paso5', label: 'Paso 5 – Título', ph: '✅ Confirmación de Datos' },
-                                                                { key: 'form_desc_paso5', label: 'Paso 5 – Descripción', ph: 'Revisa que todos tus datos...' },
-                                                            ].map((f) => (
-                                                                <div key={f.key} className="flex gap-2 items-center">
-                                                                    <span className={`text-xs font-bold w-36 shrink-0 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{f.label}</span>
-                                                                    <input type="text" value={preregConfig[f.key] || ''} onChange={(e) => setPreregConfig({ ...preregConfig, [f.key]: e.target.value })} className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder={f.ph} />
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ STEPPER ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-teal-600 text-white rounded-lg">🔘 Stepper (Barra de Progreso)</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los pasos que se muestran en la barra de progreso del formulario</p>
-                                                        <div className="space-y-2">
-                                                            {(preregConfig.stepper_json || []).map((step, idx) => (
-                                                                <div key={idx} className={`p-2 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                    <input type="text" value={step.icon} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`w-12 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🎓" />
-                                                                    <input type="text" value={step.label} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], label: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Nombre del paso" />
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ PÁGINA DE ÉXITO ═══ */}
-                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-lime-600 text-white rounded-lg">🎉 Página de Éxito</legend>
-                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el aspirante completa su pre-registro</p>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
-                                                                <input type="text" value={preregConfig.exito_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🎉" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                                <input type="text" value={preregConfig.exito_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Registro Exitoso!" />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
-                                                                <input type="text" value={preregConfig.exito_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_mensaje: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Tu pre-registro ha sido recibido..." />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón PDF</label>
-                                                                <input type="text" value={preregConfig.exito_btn_pdf || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_pdf: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📄 Descargar Ficha PDF" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón Inicio</label>
-                                                                <input type="text" value={preregConfig.exito_btn_inicio || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_inicio: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Inicio" />
-                                                            </div>
-                                                        </div>
-                                                    </fieldset>
-
-                                                    {/* ═══ BOTÓN GUARDAR ═══ */}
-                                                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
-                                                        <button
-                                                            type="submit"
-                                                            disabled={preregConfigLoading}
-                                                            className="px-8 py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-200 hover:scale-[1.02] transition-all disabled:opacity-50"
-                                                        >
-                                                            {preregConfigLoading ? 'Guardando...' : '💾 Guardar Todos los Cambios'}
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                                            renderPreregConfigForm()
                                         ) : (
                                             <>
                                                 {/* Filtros, Búsqueda y Descarga Excel */}

@@ -563,3 +563,25 @@
 .prl-cta--lg:hover {
     transform: scale(1.15) translateY(-5px);
 }
+
+/* ── Mapa y Ubicación ───────────────────────────── */
+.prl-map-container {
+    transition: all 0.5s ease;
+    filter: grayscale(0.2);
+}
+
+.prl-map-container:hover {
+    filter: grayscale(0);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.prl-map-container iframe {
+    transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .prl-map-container {
+        border-radius: 12px !important;
+        margin: 0 1rem;
+    }
+}

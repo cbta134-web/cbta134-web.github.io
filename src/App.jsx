@@ -56,13 +56,6 @@ const App = () => {
       path: 'galeria'
     },
     {
-      image: "/images/proceso de admincion.jpg",
-      title: "Proceso de Admisión",
-      description: "Información sobre requisitos y pasos para formar parte de nuestra institución.",
-      path: 'admission'
-    },
-    // Nuevas opciones agregadas
-    {
       image: "/images/campus.png",
       title: "Clubs Estudiantiles",
       description: "Únete a nuestros clubs deportivos, culturales y académicos.",
@@ -86,7 +79,6 @@ const App = () => {
       description: "Recursos y enlaces utiles para el personal docente.",
       path: 'maestros'
     },
-
     {
       image: "/images/alumnos-hero.png",
       title: "Alumnos",
@@ -95,8 +87,8 @@ const App = () => {
     },
     {
       image: "/images/proceso de admincion.jpg",
-      title: "Pre-Registro",
-      description: "Realiza tu pre-registro como aspirante de nuevo ingreso y obtén tu ficha.",
+      title: "Proceso de Admisión y Pre-Registro",
+      description: "Información sobre requisitos, fechas y pre-registro para nuevo ingreso.",
       path: 'preregistro'
     }
   ];
@@ -297,7 +289,8 @@ const App = () => {
       case 'galeria':
         return <Galeria setCurrentView={setCurrentView} />;
       case 'admission':
-        return <AdmissionProcess onBack={goBackToHome} />;
+      case 'preregistro':
+        return <PreRegistroLanding setCurrentView={setCurrentView} />;
       case 'nosotros':
         return <Nosotros setCurrentView={setCurrentView} />;
       case 'clubs':

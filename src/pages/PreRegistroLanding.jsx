@@ -24,6 +24,10 @@ export default function PreRegistroLanding() {
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [carreras, setCarreras] = useState([]);
+    const [admissionDates, setAdmissionDates] = useState([]);
+    const [requirements, setRequirements] = useState([]);
+    const [contact, setContact] = useState(null);
+    const [location, setLocation] = useState(null);
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -68,8 +72,25 @@ export default function PreRegistroLanding() {
             }
         };
 
+        const fetchAdmissionData = async () => {
+            try {
+                const { data: dates } = await supabase.from('admission_dates').select('*').order('order_index', { ascending: true });
+                const { data: reqs } = await supabase.from('admission_requirements').select('*').order('order_index', { ascending: true });
+                const { data: cont } = await supabase.from('admission_contact').select('*').order('created_at', { ascending: false }).limit(1).single();
+                const { data: loc } = await supabase.from('contact_location').select('*').order('created_at', { ascending: false }).limit(1).single();
+
+                if (dates) setAdmissionDates(dates);
+                if (reqs) setRequirements(reqs);
+                if (cont) setContact(cont);
+                if (loc) setLocation(loc);
+            } catch (err) {
+                console.error('Error fetching admission data:', err);
+            }
+        };
+
         fetchConfig();
         fetchCarreras();
+        fetchAdmissionData();
     }, []);
 
     useEffect(() => {
@@ -286,12 +307,71 @@ export default function PreRegistroLanding() {
                     <p>{requisitosSubtitulo}</p>
                 </div>
                 <div className="prl-req-grid">
-                    {requisitos.map((r, i) => (
-                        <div key={i} className="prl-req-item">
-                            <span className="prl-req-item__icon">{r.icon}</span>
-                            <span>{r.txt}</span>
+                    {requirements.length > 0 ? (
+                        requirements.map((r) => (
+                            <div key={r.id} className="prl-req-item">
+                                <span className="prl-req-item__icon">🔹</span>
+                                <span>{r.requirement}</span>
+                            </div>
+                        ))
+                    ) : (
+                        requisitos.map((r, i) => (
+                            <div key={i} className="prl-req-item">
+                                <span className="prl-req-item__icon">{r.icon}</span>
+                                <span>{r.txt}</span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </section>
+
+            {/* ── FECHAS / PROCESO DE ADMISIÓN ───────────── */}
+            <section className="prl-steps" style={{ background: 'var(--bg-secondary)', marginTop: '0' }}>
+                <div className="prl-section-header">
+                    <h2>📅 Fechas del Proceso de Admisión</h2>
+                    <p>Calendario oficial para aspirantes ciclo 2026</p>
+                </div>
+                <div className="prl-steps__grid">
+                    {admissionDates.map((item, idx) => (
+                        <div key={item.id} className="prl-step-card" style={{ borderTop: '4px solid #1877f2' }}>
+                            <div className="prl-step-card__num">{idx + 1}</div>
+                            <h3 className="prl-step-card__title">{item.title}</h3>
+                            <p className="prl-step-card__desc" style={{ fontWeight: 'bold', color: '#1877f2' }}>{item.date_range}</p>
+                            <p className="prl-step-card__desc">{item.subtitle}</p>
                         </div>
                     ))}
+                </div>
+            </section>
+
+            {/* ── UBICACIÓN / MAPA ───────────────────────── */}
+            <section className="prl-carreras" style={{ background: '#fff' }}>
+                <div className="prl-section-header">
+                    <h2>📍 Nuestra Ubicación</h2>
+                    <p>{location?.address_text || contact?.address || 'Carretera Tetlanohcan a Malintzin Km 3, San Francisco Tetlanohcan, Tlaxcala'}</p>
+                </div>
+                <div className="prl-map-container" style={{
+                    borderRadius: '24px',
+                    overflow: 'hidden',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                    maxWidth: '1100px',
+                    margin: '0 auto',
+                    border: '1px solid #eee'
+                }}>
+                    <iframe
+                        src={location?.map_embed_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3766.4767792435587!2d-98.1400007!3d19.261621699999996!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85cfdd8ebaaaaaab%3A0x27dafbca82bfb2a0!2sCentro%20De%20Bachillerato%20Tecnol%C3%B3gico%20Agropecuario%20N%C3%BAm.%20134!5e0!3m2!1ses-419!2smx!4v1772321237884!5m2!1ses-419!2smx"}
+                        width="100%"
+                        height="450"
+                        style={{ border: 0, display: 'block' }}
+                        allowFullScreen=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                    ></iframe>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                    <p style={{ color: '#666' }}>
+                        📞 {contact?.phone_value || '01 (246) 46 2 34 56'} | 📧 {contact?.email_value || 'cbta134@yahoo.com.mx'}
+                    </p>
                 </div>
             </section>
 

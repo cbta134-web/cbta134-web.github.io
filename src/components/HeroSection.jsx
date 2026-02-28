@@ -7,19 +7,65 @@ const HeroSection = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchSlides = async () => {
-      const { data } = await supabase
-        .from('hero_slides')
-        .select('*')
-        .order('order_index', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('hero_slides')
+          .select('*')
+          .order('order_index', { ascending: true });
 
-      if (data && data.length > 0) {
-        setSlides(data);
+        if (!isMounted) return;
+
+        if (error) {
+          if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+            console.warn('Carga de slides abortada, usando fallback...');
+          } else {
+            console.error('Error fetching slides from DB:', error);
+          }
+        }
+
+        if (data && data.length > 0) {
+          setSlides(data);
+        } else {
+          // Fallback si no hay datos o hubo error manejado
+          setSlides([
+            {
+              id: 'default-1',
+              image_url: '/images/campus.png',
+              title: 'CBTa 134',
+              subtitle: 'Excelencia en Educación Tecnológica Agropecuaria',
+              overlay_opacity: 0.4
+            },
+            {
+              id: 'default-2',
+              image_url: '/images/valores.png',
+              title: 'Calidad Educativa',
+              subtitle: 'Formando el futuro del campo mexicano',
+              overlay_opacity: 0.4
+            }
+          ]);
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching slides:', err);
+        // Aseguramos fallback en catch también si slides sigue vacío
+        setSlides(prev => prev.length > 0 ? prev : [
+          {
+            id: 'default-1',
+            image_url: '/images/campus.png',
+            title: 'CBTa 134',
+            subtitle: 'Excelencia en Educación Tecnológica Agropecuaria',
+            overlay_opacity: 0.4
+          }
+        ]);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchSlides();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {

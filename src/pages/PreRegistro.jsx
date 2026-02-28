@@ -31,6 +31,20 @@ const SEXOS = ['Masculino', 'Femenino', 'Otro'];
 const ESTADOS_CIVIL = ['Soltero/a', 'Casado/a', 'Otro'];
 const PARENTESCOS = ['Padre', 'Madre', 'Tutor/a', 'Otro'];
 
+// Helper: asigna emoji según el nombre de la carrera
+function getCarreraEmoji(nombre = '') {
+    const n = nombre.toLowerCase();
+    if (n.includes('contab') || n.includes('admin')) return '💼';
+    if (n.includes('ofimátic') || n.includes('ofimatica')) return '💻';
+    if (n.includes('program') || n.includes('software') || n.includes('informátic')) return '⌨️';
+    if (n.includes('agropecuari') || n.includes('agríco') || n.includes('agricol')) return '🌾';
+    if (n.includes('pecuari') || n.includes('ganader')) return '🐄';
+    if (n.includes('aliment')) return '🍽️';
+    if (n.includes('electr')) return '⚡';
+    if (n.includes('mecán') || n.includes('mecan') || n.includes('industrial')) return '🔧';
+    return '📚';
+}
+
 // ─── ESTADOS INICIALES ───────────────────────────────────────
 
 const initialAspirante = {
@@ -109,8 +123,12 @@ export default function PreRegistro({ setCurrentView }) {
             }
         };
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            handleSession(session).then(() => setLoading(false));
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error && error.name !== 'AbortError') console.error('Error fetching session:', error);
+            handleSession(session).finally(() => setLoading(false));
+        }).catch(err => {
+            if (err.name !== 'AbortError') console.error('Session promise error:', err);
+            setLoading(false);
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -182,28 +200,19 @@ export default function PreRegistro({ setCurrentView }) {
         fetchFormConfig();
     }, []);
 
-    // Cargar carreras desde Supabase (tabla real: carreras_tecnicas)
     useEffect(() => {
         const fetchCarreras = async () => {
             try {
                 const { data, error } = await supabase
                     .from('carreras_tecnicas')
-                    .select('id, nombre, descripcion, imagen_url');
-                if (data && data.length > 0) {
+                    .select('id, nombre, descripcion, imagen_url')
+                    .order('nombre', { ascending: true });
+                if (data) {
                     setCarreras(data.map(c => ({
                         ...c,
-                        icono: getCarreraIcon(c.nombre),
-                        descripcion_corta: c.descripcion ? c.descripcion.substring(0, 120) + (c.descripcion.length > 120 ? '...' : '') : '',
+                        icono: getCarreraEmoji(c.nombre),
+                        descripcion_corta: c.descripcion ? c.descripcion.substring(0, 100) + (c.descripcion.length > 100 ? '...' : '') : '',
                     })));
-                } else {
-                    // Fallback hardcoded
-                    setCarreras([
-                        { id: 1, nombre: 'Técnico en Contabilidad', descripcion_corta: 'Finanzas, contabilidad y administración.', icono: '💼' },
-                        { id: 2, nombre: 'Técnico en Ofimática', descripcion_corta: 'Herramientas digitales y productividad.', icono: '💻' },
-                        { id: 3, nombre: 'Técnico en Programación', descripcion_corta: 'Desarrollo de software y apps.', icono: '⌨️' },
-                        { id: 4, nombre: 'Técnico Agropecuario', descripcion_corta: 'Producción agrícola sustentable.', icono: '🌾' },
-                        { id: 5, nombre: 'Técnico en Sistemas de Producción Pecuaria', descripcion_corta: 'Ganadería y producción animal.', icono: '🐄' },
-                    ]);
                 }
             } catch (err) {
                 console.error('Error fetching carreras:', err);
@@ -702,7 +711,13 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
                             }}
                             hidden
                         />
-                        <div className="carrera-card__icon">{c.icono || getCarreraIcon(c.nombre)}</div>
+                        <div className="carrera-card__icon">
+                            {c.imagen_url ? (
+                                <img src={c.imagen_url} alt={c.nombre} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }} />
+                            ) : (
+                                c.icono || getCarreraEmoji(c.nombre)
+                            )}
+                        </div>
                         <div className="carrera-card__name">{c.nombre}</div>
                         {c.descripcion_corta && <div className="carrera-card__desc">{c.descripcion_corta}</div>}
                     </label>
@@ -760,14 +775,7 @@ function StepCarrera({ data, onChange, errors, carreras, cfg }) {
     );
 }
 
-function getCarreraIcon(n) {
-    if (n.includes('Contabilidad')) return '💼';
-    if (n.includes('Ofimática')) return '💻';
-    if (n.includes('Programación')) return '⌨️';
-    if (n.includes('Agropecuario')) return '🌾';
-    if (n.includes('Pecuaria')) return '🐄';
-    return '📚';
-}
+
 
 // ════════════════════════════════════════════════════
 // PASO 3 – Escuela de procedencia (MEJORADO CON SELECTS)

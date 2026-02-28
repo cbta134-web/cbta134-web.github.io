@@ -52,7 +52,11 @@ function TarjetaEditable({ card, idx, total, darkMode, onSave, onToggleVisibilit
             return;
         }
 
-        const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        const { data } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        let publicUrl = data.publicUrl;
+        if (publicUrl && !publicUrl.includes('/object/public/')) {
+            publicUrl = publicUrl.replace('/object/', '/object/public/');
+        }
 
         // Actualizar el estado local
         const updatedForm = { ...form, image_url: publicUrl };
@@ -282,7 +286,11 @@ function SlideEditable({ slide, idx, darkMode, onUpdate, onDelete }) {
             return;
         }
 
-        const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        const { data } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        let publicUrl = data.publicUrl;
+        if (publicUrl && !publicUrl.includes('/object/public/')) {
+            publicUrl = publicUrl.replace('/object/', '/object/public/');
+        }
 
         // Guardar automáticamente en la base de datos
         const { error: dbError } = await supabase
@@ -530,7 +538,11 @@ function CarruselSection({ darkMode }) {
         const fileName = `hero-${Date.now()}.${fileExt}`;
         const { error } = await supabase.storage.from('ui_media').upload(fileName, addFile, { upsert: true });
         if (error) { alert('Error subiendo: ' + error.message); setUploadingAdd(false); return; }
-        const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        const { data } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        let publicUrl = data.publicUrl;
+        if (publicUrl && !publicUrl.includes('/object/public/')) {
+            publicUrl = publicUrl.replace('/object/', '/object/public/');
+        }
         setAddSlideForm(f => ({ ...f, image_url: publicUrl })); // Correctly update addSlideForm
         setAddFile(null);
         setUploadingAdd(false);
@@ -1012,7 +1024,11 @@ const UiInterfazAdmin = ({
         const fileName = `option-${Date.now()}.${fileExt}`;
         const { error } = await supabase.storage.from('ui_media').upload(fileName, newCardFile, { upsert: true });
         if (error) { alert('Error: ' + error.message); setUploadingNewCard(false); return; }
-        const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        const { data } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        let publicUrl = data.publicUrl;
+        if (publicUrl && !publicUrl.includes('/object/public/')) {
+            publicUrl = publicUrl.replace('/object/', '/object/public/');
+        }
         setNewCardForm(f => ({ ...f, image_url: publicUrl }));
         setNewCardFile(null);
         setUploadingNewCard(false);
