@@ -36,8 +36,9 @@ const AlumnosAdmin = ({ darkMode }) => {
     const fetchStudents = async () => {
         setLoading(true);
         const { data, error } = await supabase
-            .from('alumnos_perfiles')
+            .from('profiles')
             .select('*')
+            .eq('rol', 'alumno')
             .order('apellidos', { ascending: true });
 
         if (!error && data) setStudents(data);
@@ -51,14 +52,14 @@ const AlumnosAdmin = ({ darkMode }) => {
     // ── Lógica de filtrado ──────────────────────────────────────────────────
     const getAvailableGroups = (semester) => {
         const groups = students
-            .filter(s => s.semestre === semester && s.grupo)
+            .filter(s => s.grado === semester && s.grupo)
             .map(s => s.grupo);
         return [...new Set(groups)].sort();
     };
 
     const getFilteredStudents = () => {
         return students.filter(student => {
-            const matchesSemester = selectedSemester ? student.semestre === selectedSemester : true;
+            const matchesSemester = selectedSemester ? student.grado === selectedSemester : true;
             const matchesGroup = selectedGroup ? student.grupo === selectedGroup : true;
             const fullName = `${student.nombre} ${student.apellidos}`.toLowerCase();
             const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
@@ -81,7 +82,7 @@ const AlumnosAdmin = ({ darkMode }) => {
             apellidos: student.apellidos || '',
             numero_control: student.numero_control || '',
             curp: student.curp || '',
-            semestre: student.semestre || '',
+            semestre: student.grado || '',
             grupo: student.grupo || '',
             carrera_tecnica: student.carrera_tecnica || '',
             estatus: student.estatus || 'Regular'
@@ -92,8 +93,16 @@ const AlumnosAdmin = ({ darkMode }) => {
         e.preventDefault();
         setSavingProfile(true);
         const { error } = await supabase
-            .from('alumnos_perfiles')
-            .update(profileForm)
+            .from('profiles')
+            .update({
+                nombre: profileForm.nombre,
+                apellidos: profileForm.apellidos,
+                numero_control: profileForm.numero_control,
+                curp: profileForm.curp,
+                grado: profileForm.semestre,
+                grupo: profileForm.grupo,
+                // carrera_id: profileForm.carrera_tecnica, // Debería ser un join o ID
+            })
             .eq('id', editingStudent.id);
 
         if (error) {
@@ -109,7 +118,7 @@ const AlumnosAdmin = ({ darkMode }) => {
         if (!window.confirm('¿Estás seguro de eliminar a este alumno? Esta acción no se puede deshacer.')) return;
 
         const { error } = await supabase
-            .from('alumnos_perfiles')
+            .from('profiles')
             .delete()
             .eq('id', id);
 
@@ -120,7 +129,7 @@ const AlumnosAdmin = ({ darkMode }) => {
     // ── Gestión de Calificaciones ───────────────────────────────────────────
     const openGradesModal = async (student) => {
         setViewingGrades(student);
-        fetchGrades(student.id, student.semestre);
+        fetchGrades(student.id, student.grado);
     };
 
     const fetchGrades = async (studentId, semestre) => {
@@ -128,7 +137,7 @@ const AlumnosAdmin = ({ darkMode }) => {
         const { data, error } = await supabase
             .from('calificaciones')
             .select('*')
-            .eq('student_id', studentId)
+            .eq('alumno_id', studentId)
             .eq('semestre', semestre);
 
         if (!error && data) setCurrentGrades(data);
@@ -149,16 +158,16 @@ const AlumnosAdmin = ({ darkMode }) => {
         const { error } = await supabase
             .from('calificaciones')
             .insert([{
-                student_id: viewingGrades.id,
-                semestre: viewingGrades.semestre,
+                alumno_id: viewingGrades.id,
+                semestre: viewingGrades.grado,
                 materia: newGrade.materia,
-                calificacion: newGrade.calificacion || null
+                parcial1: newGrade.calificacion || null
             }]);
 
         if (error) alert('Error al agregar materia: ' + error.message);
         else {
             setNewGrade({ materia: '', calificacion: '' });
-            fetchGrades(viewingGrades.id, viewingGrades.semestre);
+            fetchGrades(viewingGrades.id, viewingGrades.grado);
         }
     };
 

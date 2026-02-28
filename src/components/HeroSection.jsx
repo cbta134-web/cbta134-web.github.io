@@ -43,13 +43,15 @@ const HeroSection = () => {
         {slides.map((slide, index) => (
           <div
             key={slide.id || index}
-            className={`slide absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            className={`slide ${index === currentSlide ? 'active' : ''}`}
             style={{
               backgroundImage: `url(${slide.image_url})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center',
+              zIndex: index === currentSlide ? 10 : 0
             }}
           >
+
             <div
               className="absolute inset-0 bg-black"
               style={{ opacity: slide.overlay_opacity || 0.4 }}

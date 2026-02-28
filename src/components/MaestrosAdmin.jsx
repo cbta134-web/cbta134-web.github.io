@@ -107,6 +107,8 @@ const MaestrosAdmin = () => {
     const [baetamContactLines, setBaetamContactLines] = useState([]);
     const [baetamContactLineForm, setBaetamContactLineForm] = useState({ line_text: '' });
     const [editingBaetamContactLine, setEditingBaetamContactLine] = useState(null);
+    const [uploadingBaetamHero, setUploadingBaetamHero] = useState(false);
+    const [seedingBaetam, setSeedingBaetam] = useState(false);
     // Estados para Contacto
     const [contactMain, setContactMain] = useState(null);
     const [contactMainForm, setContactMainForm] = useState({
@@ -1340,6 +1342,94 @@ const MaestrosAdmin = () => {
         }
     };
 
+    const handleSeedBaetamTlaxcala = async () => {
+        if (!window.confirm('¿Quieres cargar la información REAL de CBTA 134 Tlaxcala para BAETAM? Esto sobrescribirá la configuración actual.')) return;
+        setSeedingBaetam(true);
+        try {
+            // 1. Configuración principal
+            const baetamData = {
+                hero_image_url: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?q=80&w=2070',
+                title: 'BAETAM CBTa 134',
+                subtitle: 'Bachillerato Autoplaneado de Educación Tecnológica Agropecuaria y del Mar - Plantel San Francisco Tetlanohcan, Tlaxcala.',
+                target_date: '2026-08-15T08:00:00.000Z',
+                countdown_label: '⏰ Próximo ciclo de inscripciones:',
+                countdown_date_text: 'Agosto 2026',
+                inscriptions_title: 'Unidad de Educación Autoplaneada (Tlaxcala)',
+                inscriptions_period_title: '📝 Inscripciones Abiertas',
+                inscriptions_period_description: 'Inicia tu bachillerato bivalente en nuestra modalidad sabatina. Especial para personas que trabajan.',
+                requirements_title: 'Documentación para Ingreso',
+                advantages_title: '¿Por qué elegir nuestra modalidad?',
+                contact_title: 'Atención a Estudiantes',
+                contact_description: 'Visítanos en nuestras oficinas para una atención personalizada.'
+            };
+
+            if (baetamConfig?.id) {
+                await supabase.from('baetam_config').update(baetamData).eq('id', baetamConfig.id);
+            } else {
+                await supabase.from('baetam_config').insert([baetamData]);
+            }
+
+            // 2. Limpiar y Cargar Info Cards
+            await supabase.from('baetam_info_cards').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_info_cards').insert([
+                { title: 'Educación para Adultos', description: 'Para mayores de 18 años con validez oficial.', order_index: 1 },
+                { title: 'Sistema Sabatino', description: 'Asistencia únicamente los sábados.', order_index: 2 },
+                { title: 'Doble Titulación', description: 'Certificado de Bachillerato y Título Técnico.', order_index: 3 }
+            ]);
+
+            // 3. Limpiar y Cargar Requisitos
+            await supabase.from('baetam_requirements').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_requirements').insert([
+                { icon: '📄', text: 'Acta de Nacimiento (Original y 3 copias)', order_index: 1 },
+                { icon: '🎓', text: 'Certificado de Secundaria (Original y 3 copias)', order_index: 2 },
+                { icon: '🆔', text: 'CURP actualizado', order_index: 3 },
+                { icon: '📸', text: '6 Fotografías tamaño infantil B/N', order_index: 4 }
+            ]);
+
+            // 4. Limpiar y Cargar Ventajas
+            await supabase.from('baetam_advantages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_advantages').insert([
+                { title: 'Sin examen de admisión', description: 'Acceso directo con documentación completa.', order_index: 1 },
+                { title: 'Validez ante la SEP', description: 'Certificado nacional para cualquier universidad.', order_index: 2 }
+            ]);
+
+            // 5. Limpiar y Cargar Contacto
+            await supabase.from('baetam_contact_lines').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_contact_lines').insert([
+                { line_text: '📍 Carr. a San Pedro Tlalcuapan s/n, Tetlanohcan, Tlaxcala.', order_index: 1 },
+                { line_text: '📞 Tel: (246) 464 1234', order_index: 2 },
+                { line_text: '⏰ Sábados de 8:00 AM a 3:00 PM', order_index: 3 }
+            ]);
+
+            alert('✅ Datos de Tlaxcala cargados con éxito.');
+            fetchBaetamData();
+        } catch (err) {
+            alert('Error cargando datos: ' + err.message);
+        } finally {
+            setSeedingBaetam(false);
+        }
+    };
+
+    const handleBaetamHeroUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingBaetamHero(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `baetam-hero-${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('ui_media').upload(fileName, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+            setBaetamConfigForm({ ...baetamConfigForm, hero_image_url: publicUrl });
+        } catch (err) {
+            alert('Error al subir imagen: ' + err.message);
+        } finally {
+            setUploadingBaetamHero(false);
+        }
+    };
+
     const handleSaveBaetamConfig = async (e) => {
         e.preventDefault();
         const payload = {
@@ -2516,49 +2606,37 @@ const MaestrosAdmin = () => {
         });
     };
 
-    const base64UrlEncode = (str) => {
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(str);
-        let binary = '';
-        bytes.forEach((b) => { binary += String.fromCharCode(b); });
-        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    // Codifica un string Unicode a base64url para Gmail API
+    // Usa el método estándar: encodeURIComponent -> unescape -> btoa -> url-safe
+    const toBase64Url = (str) => {
+        return btoa(unescape(encodeURIComponent(str)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/g, '');
     };
 
-    const encodeSubject = (subject = '') => {
-        if (!subject) return '';
-        try {
-            const encoder = new TextEncoder();
-            const bytes = encoder.encode(subject);
-            let binary = '';
-            bytes.forEach((b) => { binary += String.fromCharCode(b); });
-            return `=?UTF-8?B?${btoa(binary)}?=`;
-        } catch {
-            return subject;
-        }
-    };
-
-    const buildRawMessage = ({ from, recipients, subject, html, text }) => {
-        const contentType = html ? 'text/html; charset="UTF-8"' : 'text/plain; charset="UTF-8"';
+    // Construye un mensaje RFC 2822 completo para UN destinatario
+    // y lo devuelve como base64url para el campo "raw" de Gmail API
+    const buildRawMessage = ({ from, to, subject, html, text }) => {
         const body = html || text || '';
         const fromHeader = from ? `"CBTa 134" <${from}>` : 'me';
+        const contentType = html ? 'text/html; charset="UTF-8"' : 'text/plain; charset="UTF-8"';
 
-        // Usar el primer destinatario como "To" y el resto como "Bcc"
-        const toRecipient = recipients && recipients.length > 0 ? recipients[0] : '';
-        const bccRecipients = recipients && recipients.length > 1 ? recipients.slice(1) : [];
-
-        const headers = [
+        // Construir el mensaje RFC 2822 línea por línea
+        const messageParts = [
             `From: ${fromHeader}`,
-            `To: ${toRecipient}`,
-            bccRecipients.length > 0 ? `Bcc: ${bccRecipients.join(', ')}` : null,
-            `Subject: ${encodeSubject(subject || '')}`,
+            `To: <${to}>`,
+            `Subject: ${subject || '(sin asunto)'}`,
             'MIME-Version: 1.0',
-            `Content-Type: ${contentType}`
-        ].filter(Boolean).join('\r\n');
+            `Content-Type: ${contentType}`,
+            '',  // línea vacía separando headers del body
+            body
+        ];
 
-        // El mensaje requiere una línea en blanco entre headers y body
-        const rawMessage = headers + '\r\n\r\n' + body;
-        return base64UrlEncode(rawMessage);
+        const rawMessage = messageParts.join('\r\n');
+        return toBase64Url(rawMessage);
     };
+
 
     const getRecipientEmails = (currentUserId, senderEmail) => {
         let filtered = students;
@@ -2627,9 +2705,8 @@ const MaestrosAdmin = () => {
             const { data: { session } } = await supabase.auth.getSession();
             const senderEmailRaw = (gmailEmail || session?.user?.email || user?.email || localStorage.getItem('gmail_user_email') || '').trim();
             const { emails: recipients, filteredCount, missingEmailsCount, invalidEmailsCount } = getRecipientEmails(session?.user?.id || user?.id, senderEmailRaw);
-            const safeRecipients = recipients;
 
-            if (!safeRecipients.length) {
+            if (!recipients.length) {
                 const hint = filteredCount
                     ? `Se encontraron ${filteredCount} alumnos, ${missingEmailsCount} sin correo y ${invalidEmailsCount} con correo inválido.`
                     : 'No hay alumnos que coincidan con el filtro seleccionado.';
@@ -2637,50 +2714,92 @@ const MaestrosAdmin = () => {
                 throw new Error(`No hay correos disponibles. ${hint}${extra}`);
             }
 
-            const batches = chunk(safeRecipients, 40);
+            let sentCount = 0;
+            let failedCount = 0;
+            const failedEmails = [];
 
-            for (const recipientBatch of batches) {
+            // Enviar un correo individual por cada destinatario para garantizar entrega
+            for (let i = 0; i < recipients.length; i++) {
+                const recipientEmail = recipients[i];
                 const raw = buildRawMessage({
                     from: senderEmailRaw || undefined,
+                    to: recipientEmail,
                     subject: gmailForm.subject,
                     html: gmailForm.messageHtml || undefined,
-                    text: gmailForm.messageText || undefined,
-                    recipients: recipientBatch
+                    text: gmailForm.messageText || undefined
                 });
 
-                const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${providerToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ raw })
-                });
+                try {
+                    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${providerToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ raw })
+                    });
 
-                if (!res.ok) {
-                    const errorText = await res.text().catch(() => '');
-                    console.error('Gmail API error:', res.status, errorText);
-                    if (res.status === 401 || res.status === 403) {
-                        setGmailConnected(false);
-                        setProviderToken(null);
-                        localStorage.removeItem('gmail_provider_token');
-                        localStorage.removeItem('gmail_user_email');
-                        throw new Error('El token de Gmail no es válido o no tiene permisos. Cierra sesión e inicia sesión nuevamente con Google.');
+                    if (!res.ok) {
+                        const errorText = await res.text().catch(() => '');
+                        console.error(`Gmail API error para ${recipientEmail}:`, res.status, errorText);
+
+                        if (res.status === 401 || res.status === 403) {
+                            setGmailConnected(false);
+                            setProviderToken(null);
+                            localStorage.removeItem('gmail_provider_token');
+                            localStorage.removeItem('gmail_user_email');
+                            throw new Error('El token de Gmail no es válido o no tiene permisos. Cierra sesión e inicia sesión nuevamente con Google.');
+                        }
+
+                        // Si es rate limit (429), esperar y reintentar
+                        if (res.status === 429) {
+                            await new Promise(r => setTimeout(r, 2000));
+                            const retry = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${providerToken}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ raw })
+                            });
+                            if (retry.ok) {
+                                sentCount++;
+                            } else {
+                                failedCount++;
+                                failedEmails.push(recipientEmail);
+                            }
+                        } else {
+                            failedCount++;
+                            failedEmails.push(recipientEmail);
+                        }
+                    } else {
+                        sentCount++;
                     }
-                    let errMessage = 'Error al enviar correos.';
-                    try {
-                        const errData = JSON.parse(errorText || '{}');
-                        errMessage = errData?.error?.message || errMessage;
-                    } catch {
-                        if (errorText) errMessage = errorText;
-                    }
-                    throw new Error(errMessage);
+                } catch (sendErr) {
+                    // Si es un error de auth, re-lanzar para detener todo
+                    if (sendErr.message.includes('token')) throw sendErr;
+                    failedCount++;
+                    failedEmails.push(recipientEmail);
+                }
+
+                // Pequeña pausa entre envíos para evitar rate limiting de Gmail
+                if (i < recipients.length - 1) {
+                    await new Promise(r => setTimeout(r, 150));
                 }
             }
 
-            setGmailStatus({ type: 'success', message: `✅ Enviados ${safeRecipients.length} correos en ${batches.length} lote(s).` });
+            if (failedCount === 0) {
+                setGmailStatus({ type: 'success', message: `✅ Enviados ${sentCount} correos exitosamente.` });
+            } else if (sentCount > 0) {
+                setGmailStatus({ type: 'warning', message: `⚠️ Enviados ${sentCount} correos. Fallaron ${failedCount}: ${failedEmails.slice(0, 3).join(', ')}${failedEmails.length > 3 ? '...' : ''}` });
+            } else {
+                throw new Error(`No se pudieron enviar los correos. Fallaron todos (${failedCount}).`);
+            }
+
             // Limpiar formulario después de enviar
-            setGmailForm({ ...gmailForm, subject: '', messageHtml: '', messageText: '' });
+            if (sentCount > 0) {
+                setGmailForm({ ...gmailForm, subject: '', messageHtml: '', messageText: '' });
+            }
         } catch (err) {
             setGmailStatus({ type: 'error', message: err.message || 'Error al enviar correos.' });
         } finally {
@@ -3594,102 +3713,186 @@ const MaestrosAdmin = () => {
                     <div className="max-w-6xl mx-auto space-y-10">
                         <section>
                             <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-blue-800">school</span> Configuración BAETAM
-                                </h3>
-                                <form onSubmit={handleSaveBaetamConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="URL imagen principal"
-                                        value={baetamConfigForm.hero_image_url}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, hero_image_url: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título"
-                                        value={baetamConfigForm.title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Subtítulo"
-                                        value={baetamConfigForm.subtitle}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, subtitle: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="date"
-                                        value={baetamConfigForm.target_date}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, target_date: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Texto contador"
-                                        value={baetamConfigForm.countdown_label}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, countdown_label: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Texto fecha contador"
-                                        value={baetamConfigForm.countdown_date_text}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, countdown_date_text: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título inscripciones"
-                                        value={baetamConfigForm.inscriptions_title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título periodo inscripciones"
-                                        value={baetamConfigForm.inscriptions_period_title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_period_title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Descripción periodo inscripciones"
-                                        value={baetamConfigForm.inscriptions_period_description}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_period_description: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título requisitos"
-                                        value={baetamConfigForm.requirements_title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, requirements_title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título ventajas"
-                                        value={baetamConfigForm.advantages_title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, advantages_title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Título contacto"
-                                        value={baetamConfigForm.contact_title}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, contact_title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Descripción contacto"
-                                        value={baetamConfigForm.contact_description}
-                                        onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, contact_description: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className="md:col-span-2">
-                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar BAETAM</button>
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-blue-800">school</span> Configuración BAETAM
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={handleSeedBaetamTlaxcala}
+                                        disabled={seedingBaetam}
+                                        className="px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 font-bold rounded-xl text-xs transition flex items-center gap-2"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">{seedingBaetam ? 'sync' : 'database'}</span>
+                                        {seedingBaetam ? 'Cargando...' : 'Cargar Datos Tlaxcala'}
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                                    {/* Previsualización del Hero */}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Imagen de Cabecera</label>
+                                        <div className="relative group rounded-3xl overflow-hidden aspect-[16/9] shadow-lg border-2 border-slate-100 dark:border-slate-700 bg-slate-100">
+                                            {baetamConfigForm.hero_image_url ? (
+                                                <img src={baetamConfigForm.hero_image_url} alt="Hero" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 italic text-xs p-4 text-center">
+                                                    <span className="material-symbols-outlined text-3xl mb-2">image</span>
+                                                    Sin imagen configurada
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <label className="cursor-pointer bg-white text-blue-800 px-4 py-2 rounded-xl text-xs font-bold shadow-2xl hover:scale-105 transition flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-sm">upload</span>
+                                                    {uploadingBaetamHero ? 'Subiendo...' : 'Cambiar Imagen'}
+                                                    <input type="file" onChange={handleBaetamHeroUpload} className="hidden" accept="image/*" disabled={uploadingBaetamHero} />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* URL y Títulos rápidos */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">URL de la Imagen (o subir arriba)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="https://..."
+                                                    value={baetamConfigForm.hero_image_url}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, hero_image_url: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'} text-xs font-mono`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Título Principal</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título de la sección"
+                                                    value={baetamConfigForm.title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Subtítulo Informativo</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Descripción corta"
+                                                    value={baetamConfigForm.subtitle}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, subtitle: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <form onSubmit={handleSaveBaetamConfig} className="space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 rounded-3xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30">
+                                        <div className="md:col-span-3">
+                                            <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-base">event_note</span> Gestión del Contador y Periodos
+                                            </h4>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Fecha Límite (Countdown)</label>
+                                            <input
+                                                type="date"
+                                                value={baetamConfigForm.target_date}
+                                                onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, target_date: e.target.value })}
+                                                className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Etiqueta del Contador</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Ej: Inscripciones abiertas en:"
+                                                value={baetamConfigForm.countdown_label}
+                                                onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, countdown_label: e.target.value })}
+                                                className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Mes de Referencia</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Ej: Agosto 2026"
+                                                value={baetamConfigForm.countdown_date_text}
+                                                onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, countdown_date_text: e.target.value })}
+                                                className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Sección de Inscripciones</h4>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título del bloque de inscripciones"
+                                                    value={baetamConfigForm.inscriptions_title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título del periodo (Ej: Proceso Sabatino)"
+                                                    value={baetamConfigForm.inscriptions_period_title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_period_title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <textarea
+                                                    placeholder="Descripción del periodo"
+                                                    rows={3}
+                                                    value={baetamConfigForm.inscriptions_period_description}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, inscriptions_period_description: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Títulos de Subsecciones</h4>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título Requisitos"
+                                                    value={baetamConfigForm.requirements_title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, requirements_title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título Ventajas"
+                                                    value={baetamConfigForm.advantages_title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, advantages_title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título Contacto"
+                                                    value={baetamConfigForm.contact_title}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, contact_title: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Descripción Contacto"
+                                                    value={baetamConfigForm.contact_description}
+                                                    onChange={(e) => setBaetamConfigForm({ ...baetamConfigForm, contact_description: e.target.value })}
+                                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
+                                        <button type="submit" className="px-8 py-4 bg-blue-800 hover:bg-blue-900 text-white font-black rounded-2xl shadow-xl hover:shadow-blue-200/50 transition-all active:scale-95 flex items-center gap-2">
+                                            <span className="material-symbols-outlined">save</span> Guardar Cambios en BAETAM
+                                        </button>
                                     </div>
                                 </form>
                             </div>
@@ -3834,2598 +4037,2612 @@ const MaestrosAdmin = () => {
                             </div>
                         </section>
                     </div>
-                )}
+                )
+                }
 
-                {activeNav === 'contacto' && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        <section>
-                            <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-blue-800">contact_mail</span> Información Principal
-                                </h3>
-                                <form onSubmit={handleSaveContactMain} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Dirección línea 1"
-                                        value={contactMainForm.address_line1}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, address_line1: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Dirección línea 2"
-                                        value={contactMainForm.address_line2}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, address_line2: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Dirección línea 3"
-                                        value={contactMainForm.address_line3}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, address_line3: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Teléfono"
-                                        value={contactMainForm.phone}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, phone: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Correo"
-                                        value={contactMainForm.email}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, email: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Sitio web"
-                                        value={contactMainForm.website}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, website: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Texto calificación"
-                                        value={contactMainForm.rating_text}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, rating_text: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Estado"
-                                        value={contactMainForm.status_text}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, status_text: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Horario línea 1"
-                                        value={contactMainForm.hours_line1}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, hours_line1: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Horario línea 2"
-                                        value={contactMainForm.hours_line2}
-                                        onChange={(e) => setContactMainForm({ ...contactMainForm, hours_line2: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className="md:col-span-2">
-                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Información</button>
+                {
+                    activeNav === 'contacto' && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            <section>
+                                <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-blue-800">contact_mail</span> Información Principal
+                                    </h3>
+                                    <form onSubmit={handleSaveContactMain} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Dirección línea 1"
+                                            value={contactMainForm.address_line1}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, address_line1: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Dirección línea 2"
+                                            value={contactMainForm.address_line2}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, address_line2: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Dirección línea 3"
+                                            value={contactMainForm.address_line3}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, address_line3: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Teléfono"
+                                            value={contactMainForm.phone}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, phone: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Correo"
+                                            value={contactMainForm.email}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, email: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Sitio web"
+                                            value={contactMainForm.website}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, website: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Texto calificación"
+                                            value={contactMainForm.rating_text}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, rating_text: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Estado"
+                                            value={contactMainForm.status_text}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, status_text: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Horario línea 1"
+                                            value={contactMainForm.hours_line1}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, hours_line1: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Horario línea 2"
+                                            value={contactMainForm.hours_line2}
+                                            onChange={(e) => setContactMainForm({ ...contactMainForm, hours_line2: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-2">
+                                            <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Información</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </section>
+
+                            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-lg font-bold mb-4">Directorio</h3>
+                                    <form onSubmit={handleSaveContactDirectory} className="space-y-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Icono"
+                                            value={contactDirectoryForm.icon}
+                                            onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, icon: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Título"
+                                            value={contactDirectoryForm.title}
+                                            onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, title: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Detalle"
+                                            value={contactDirectoryForm.detail}
+                                            onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, detail: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                            {editingContactDirectory ? 'Actualizar' : 'Agregar'}
+                                        </button>
+                                    </form>
+                                    <div className="mt-4 space-y-2">
+                                        {contactDirectory.map((item) => (
+                                            <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                                <div>
+                                                    <div className="font-semibold">{item.icon} {item.title}</div>
+                                                    <div className="text-xs text-slate-500">{item.detail}</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setEditingContactDirectory(item); setContactDirectoryForm({ icon: item.icon || '', title: item.title, detail: item.detail }); }} className="text-blue-500">Editar</button>
+                                                    <button onClick={() => handleDeleteContactDirectory(item.id)} className="text-red-500">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </form>
-                            </div>
-                        </section>
+                                </div>
 
-                        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-lg font-bold mb-4">Directorio</h3>
-                                <form onSubmit={handleSaveContactDirectory} className="space-y-3">
+                                <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-lg font-bold mb-4">Redes Sociales</h3>
+                                    <form onSubmit={handleSaveContactSocial} className="space-y-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Icono"
+                                            value={contactSocialForm.icon}
+                                            onChange={(e) => setContactSocialForm({ ...contactSocialForm, icon: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre"
+                                            value={contactSocialForm.name}
+                                            onChange={(e) => setContactSocialForm({ ...contactSocialForm, name: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL"
+                                            value={contactSocialForm.url}
+                                            onChange={(e) => setContactSocialForm({ ...contactSocialForm, url: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Descripción"
+                                            value={contactSocialForm.description}
+                                            onChange={(e) => setContactSocialForm({ ...contactSocialForm, description: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                            {editingContactSocial ? 'Actualizar' : 'Agregar'}
+                                        </button>
+                                    </form>
+                                    <div className="mt-4 space-y-2">
+                                        {contactSocial.map((item) => (
+                                            <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                                <div>
+                                                    <div className="font-semibold">{item.icon} {item.name}</div>
+                                                    <div className="text-xs text-slate-500">{item.url}</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setEditingContactSocial(item); setContactSocialForm({ icon: item.icon || '', name: item.name, url: item.url, description: item.description }); }} className="text-blue-500">Editar</button>
+                                                    <button onClick={() => handleDeleteContactSocial(item.id)} className="text-red-500">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-lg font-bold mb-4">Ubicación</h3>
+                                    <form onSubmit={handleSaveContactLocation} className="space-y-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Texto de dirección"
+                                            value={contactLocationForm.address_text}
+                                            onChange={(e) => setContactLocationForm({ ...contactLocationForm, address_text: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL iframe mapa"
+                                            value={contactLocationForm.map_embed_url}
+                                            onChange={(e) => setContactLocationForm({ ...contactLocationForm, map_embed_url: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">Guardar Ubicación</button>
+                                    </form>
+                                </div>
+
+                                <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-lg font-bold mb-4">CTA Final</h3>
+                                    <form onSubmit={handleSaveContactCta} className="space-y-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Título"
+                                            value={contactCtaForm.title}
+                                            onChange={(e) => setContactCtaForm({ ...contactCtaForm, title: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Descripción"
+                                            value={contactCtaForm.description}
+                                            onChange={(e) => setContactCtaForm({ ...contactCtaForm, description: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Texto destacado"
+                                            value={contactCtaForm.highlight_text}
+                                            onChange={(e) => setContactCtaForm({ ...contactCtaForm, highlight_text: e.target.value })}
+                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">Guardar CTA</button>
+                                    </form>
+                                </div>
+                            </section>
+
+                            <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-lg font-bold mb-4">Preguntas Frecuentes</h3>
+                                <form onSubmit={handleSaveContactFaq} className="space-y-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Pregunta"
+                                        value={contactFaqForm.question}
+                                        onChange={(e) => setContactFaqForm({ ...contactFaqForm, question: e.target.value })}
+                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Respuesta"
+                                        value={contactFaqForm.answer}
+                                        onChange={(e) => setContactFaqForm({ ...contactFaqForm, answer: e.target.value })}
+                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                        {editingContactFaq ? 'Actualizar' : 'Agregar'}
+                                    </button>
+                                </form>
+                                <div className="mt-4 space-y-2">
+                                    {contactFaqs.map((item) => (
+                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                            <div>
+                                                <div className="font-semibold">{item.question}</div>
+                                                <div className="text-xs text-slate-500">{item.answer}</div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setEditingContactFaq(item); setContactFaqForm({ question: item.question, answer: item.answer }); }} className="text-blue-500">Editar</button>
+                                                <button onClick={() => handleDeleteContactFaq(item.id)} className="text-red-500">Eliminar</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    )
+                }
+
+                {
+                    activeNav === 'about' && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            <section>
+                                <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-blue-800">info</span> Acerca de CBTa
+                                    </h3>
+                                    <form onSubmit={handleSaveAboutConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Título"
+                                            value={aboutConfigForm.title}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, title: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL Logo"
+                                            value={aboutConfigForm.logo_url}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, logo_url: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL Croquis"
+                                            value={aboutConfigForm.croquis_image_url}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, croquis_image_url: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => setAboutCroquisFile(e.target.files?.[0] || null)}
+                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleUploadCroquis}
+                                                disabled={uploadingCroquis || !aboutCroquisFile}
+                                                className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
+                                            >
+                                                {uploadingCroquis ? 'Subiendo...' : 'Subir croquis'}
+                                            </button>
+                                            {aboutConfigForm.croquis_image_url && (
+                                                <a
+                                                    href={aboutConfigForm.croquis_image_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-500"
+                                                >
+                                                    Ver imagen
+                                                </a>
+                                            )}
+                                        </div>
+                                        <textarea
+                                            placeholder="Historia"
+                                            value={aboutConfigForm.history_text}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, history_text: e.target.value })}
+                                            className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <textarea
+                                            placeholder="Misión"
+                                            value={aboutConfigForm.mission_text}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, mission_text: e.target.value })}
+                                            className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <textarea
+                                            placeholder="Visión"
+                                            value={aboutConfigForm.vision_text}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, vision_text: e.target.value })}
+                                            className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Lema"
+                                            value={aboutConfigForm.lema_text}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, lema_text: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <textarea
+                                            placeholder="Compromiso texto 1"
+                                            value={aboutConfigForm.commitment_text_1}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, commitment_text_1: e.target.value })}
+                                            className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <textarea
+                                            placeholder="Compromiso texto 2"
+                                            value={aboutConfigForm.commitment_text_2}
+                                            onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, commitment_text_2: e.target.value })}
+                                            className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-2">
+                                            <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Acerca</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </section>
+
+                            <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-lg font-bold mb-4">Valores</h3>
+                                <form onSubmit={handleSaveAboutValue} className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <input
                                         type="text"
                                         placeholder="Icono"
-                                        value={contactDirectoryForm.icon}
-                                        onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, icon: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        value={aboutValueForm.icon}
+                                        onChange={(e) => setAboutValueForm({ ...aboutValueForm, icon: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                     <input
                                         type="text"
                                         placeholder="Título"
-                                        value={contactDirectoryForm.title}
-                                        onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, title: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        value={aboutValueForm.title}
+                                        onChange={(e) => setAboutValueForm({ ...aboutValueForm, title: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Detalle"
-                                        value={contactDirectoryForm.detail}
-                                        onChange={(e) => setContactDirectoryForm({ ...contactDirectoryForm, detail: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        placeholder="Descripción"
+                                        value={aboutValueForm.description}
+                                        onChange={(e) => setAboutValueForm({ ...aboutValueForm, description: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                        {editingContactDirectory ? 'Actualizar' : 'Agregar'}
-                                    </button>
+                                    <div className="md:col-span-3">
+                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                            {editingAboutValue ? 'Actualizar' : 'Agregar'}
+                                        </button>
+                                    </div>
                                 </form>
                                 <div className="mt-4 space-y-2">
-                                    {contactDirectory.map((item) => (
+                                    {aboutValues.map((item) => (
                                         <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
                                             <div>
                                                 <div className="font-semibold">{item.icon} {item.title}</div>
-                                                <div className="text-xs text-slate-500">{item.detail}</div>
+                                                <div className="text-xs text-slate-500">{item.description}</div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => { setEditingContactDirectory(item); setContactDirectoryForm({ icon: item.icon || '', title: item.title, detail: item.detail }); }} className="text-blue-500">Editar</button>
-                                                <button onClick={() => handleDeleteContactDirectory(item.id)} className="text-red-500">Eliminar</button>
+                                                <button onClick={() => { setEditingAboutValue(item); setAboutValueForm({ icon: item.icon || '', title: item.title, description: item.description }); }} className="text-blue-500">Editar</button>
+                                                <button onClick={() => handleDeleteAboutValue(item.id)} className="text-red-500">Eliminar</button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </section>
+                        </div>
+                    )
+                }
 
-                            <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-lg font-bold mb-4">Redes Sociales</h3>
-                                <form onSubmit={handleSaveContactSocial} className="space-y-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Icono"
-                                        value={contactSocialForm.icon}
-                                        onChange={(e) => setContactSocialForm({ ...contactSocialForm, icon: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Nombre"
-                                        value={contactSocialForm.name}
-                                        onChange={(e) => setContactSocialForm({ ...contactSocialForm, name: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="URL"
-                                        value={contactSocialForm.url}
-                                        onChange={(e) => setContactSocialForm({ ...contactSocialForm, url: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Descripción"
-                                        value={contactSocialForm.description}
-                                        onChange={(e) => setContactSocialForm({ ...contactSocialForm, description: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                        {editingContactSocial ? 'Actualizar' : 'Agregar'}
-                                    </button>
-                                </form>
-                                <div className="mt-4 space-y-2">
-                                    {contactSocial.map((item) => (
+                {
+                    activeNav === 'gallery' && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            <section>
+                                <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-blue-800">photo_library</span> Galería
+                                    </h3>
+                                    <form onSubmit={handleSaveGalleryItem} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <select
+                                            value={galleryForm.section}
+                                            onChange={(e) => setGalleryForm({ ...galleryForm, section: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        >
+                                            <option value="instalaciones">Instalaciones</option>
+                                            <option value="actividades">Actividades</option>
+                                            <option value="clubs">Clubs</option>
+                                            <option value="cbta">CBTa 134</option>
+                                            <option value="galeria">Galería General</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            placeholder="Título"
+                                            value={galleryForm.title}
+                                            onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Descripción"
+                                            value={galleryForm.description}
+                                            onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL de imagen"
+                                            value={galleryForm.image_url}
+                                            onChange={(e) => setGalleryForm({ ...galleryForm, image_url: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => setGalleryFile(e.target.files?.[0] || null)}
+                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleUploadGalleryImage}
+                                                disabled={uploadingGallery || !galleryFile}
+                                                className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
+                                            >
+                                                {uploadingGallery ? 'Subiendo...' : 'Subir imagen'}
+                                            </button>
+                                            {galleryForm.image_url && (
+                                                <a
+                                                    href={galleryForm.image_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-500"
+                                                >
+                                                    Ver imagen
+                                                </a>
+                                            )}
+                                        </div>
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={galleryForm.is_locked}
+                                                onChange={(e) => setGalleryForm({ ...galleryForm, is_locked: e.target.checked })}
+                                            />
+                                            Bloquear (no se puede eliminar)
+                                        </label>
+                                        <div className="md:col-span-2">
+                                            <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
+                                                {editingGalleryItem ? 'Actualizar' : 'Agregar'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </section>
+
+                            <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-lg font-bold mb-4">Imágenes</h3>
+                                <div className="space-y-3">
+                                    {galleryItems.map((item) => (
                                         <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                            <div>
-                                                <div className="font-semibold">{item.icon} {item.name}</div>
-                                                <div className="text-xs text-slate-500">{item.url}</div>
+                                            <div className="flex items-center gap-3">
+                                                <img src={item.image_url} alt={item.title} className="w-14 h-14 rounded-lg object-cover" />
+                                                <div>
+                                                    <div className="font-semibold">{item.title}</div>
+                                                    <div className="text-xs text-slate-500">{item.section} • {item.description}</div>
+                                                </div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => { setEditingContactSocial(item); setContactSocialForm({ icon: item.icon || '', name: item.name, url: item.url, description: item.description }); }} className="text-blue-500">Editar</button>
-                                                <button onClick={() => handleDeleteContactSocial(item.id)} className="text-red-500">Eliminar</button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingGalleryItem(item);
+                                                        setGalleryForm({
+                                                            section: item.section,
+                                                            title: item.title,
+                                                            description: item.description || '',
+                                                            image_url: item.image_url,
+                                                            is_locked: item.is_locked
+                                                        });
+                                                    }}
+                                                    className="text-blue-500"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteGalleryItem(item)}
+                                                    className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    disabled={item.is_locked}
+                                                >
+                                                    Eliminar
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
+                    )
+                }
 
-                        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-lg font-bold mb-4">Ubicación</h3>
-                                <form onSubmit={handleSaveContactLocation} className="space-y-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Texto de dirección"
-                                        value={contactLocationForm.address_text}
-                                        onChange={(e) => setContactLocationForm({ ...contactLocationForm, address_text: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="URL iframe mapa"
-                                        value={contactLocationForm.map_embed_url}
-                                        onChange={(e) => setContactLocationForm({ ...contactLocationForm, map_embed_url: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">Guardar Ubicación</button>
-                                </form>
-                            </div>
-
-                            <div className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-lg font-bold mb-4">CTA Final</h3>
-                                <form onSubmit={handleSaveContactCta} className="space-y-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Título"
-                                        value={contactCtaForm.title}
-                                        onChange={(e) => setContactCtaForm({ ...contactCtaForm, title: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Descripción"
-                                        value={contactCtaForm.description}
-                                        onChange={(e) => setContactCtaForm({ ...contactCtaForm, description: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Texto destacado"
-                                        value={contactCtaForm.highlight_text}
-                                        onChange={(e) => setContactCtaForm({ ...contactCtaForm, highlight_text: e.target.value })}
-                                        className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">Guardar CTA</button>
-                                </form>
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-lg font-bold mb-4">Preguntas Frecuentes</h3>
-                            <form onSubmit={handleSaveContactFaq} className="space-y-3">
-                                <input
-                                    type="text"
-                                    placeholder="Pregunta"
-                                    value={contactFaqForm.question}
-                                    onChange={(e) => setContactFaqForm({ ...contactFaqForm, question: e.target.value })}
-                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Respuesta"
-                                    value={contactFaqForm.answer}
-                                    onChange={(e) => setContactFaqForm({ ...contactFaqForm, answer: e.target.value })}
-                                    className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                    {editingContactFaq ? 'Actualizar' : 'Agregar'}
-                                </button>
-                            </form>
-                            <div className="mt-4 space-y-2">
-                                {contactFaqs.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div>
-                                            <div className="font-semibold">{item.question}</div>
-                                            <div className="text-xs text-slate-500">{item.answer}</div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { setEditingContactFaq(item); setContactFaqForm({ question: item.question, answer: item.answer }); }} className="text-blue-500">Editar</button>
-                                            <button onClick={() => handleDeleteContactFaq(item.id)} className="text-red-500">Eliminar</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {activeNav === 'about' && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        <section>
-                            <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-blue-800">info</span> Acerca de CBTa
-                                </h3>
-                                <form onSubmit={handleSaveAboutConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Título"
-                                        value={aboutConfigForm.title}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, title: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
+                {
+                    activeNav === 'ui' && (
+                        <UiInterfazAdmin
+                            darkMode={darkMode}
+                            uiHeaderForm={uiHeaderForm}
+                            setUiHeaderForm={setUiHeaderForm}
+                            handleSaveUiHeader={handleSaveUiHeader}
+                            uiHeaderLinks={uiHeaderLinks}
+                            uiHeaderLinkForm={uiHeaderLinkForm}
+                            setUiHeaderLinkForm={setUiHeaderLinkForm}
+                            editingHeaderLink={editingHeaderLink}
+                            setEditingHeaderLink={setEditingHeaderLink}
+                            handleSaveHeaderLink={handleSaveHeaderLink}
+                            handleDeleteHeaderLink={handleDeleteHeaderLink}
+                            uiFooterForm={uiFooterForm}
+                            setUiFooterForm={setUiFooterForm}
+                            handleSaveUiFooter={handleSaveUiFooter}
+                            uiFooterLinks={uiFooterLinks}
+                            uiFooterLinkForm={uiFooterLinkForm}
+                            setUiFooterLinkForm={setUiFooterLinkForm}
+                            editingFooterLink={editingFooterLink}
+                            setEditingFooterLink={setEditingFooterLink}
+                            handleSaveFooterLink={handleSaveFooterLink}
+                            handleDeleteFooterLink={handleDeleteFooterLink}
+                        />
+                    )
+                }
+                {
+                    activeNav === 'ui_OLD_REMOVED' && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Header</h3>
+                                <form onSubmit={handleSaveUiHeader} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input
                                         type="text"
                                         placeholder="URL Logo"
-                                        value={aboutConfigForm.logo_url}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, logo_url: e.target.value })}
+                                        value={uiHeaderForm.logo_url}
+                                        onChange={(e) => setUiHeaderForm({ ...uiHeaderForm, logo_url: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <input
-                                        type="text"
-                                        placeholder="URL Croquis"
-                                        value={aboutConfigForm.croquis_image_url}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, croquis_image_url: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => setAboutCroquisFile(e.target.files?.[0] || null)}
-                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={handleUploadCroquis}
-                                            disabled={uploadingCroquis || !aboutCroquisFile}
-                                            className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
-                                        >
-                                            {uploadingCroquis ? 'Subiendo...' : 'Subir croquis'}
-                                        </button>
-                                        {aboutConfigForm.croquis_image_url && (
-                                            <a
-                                                href={aboutConfigForm.croquis_image_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-blue-500"
-                                            >
-                                                Ver imagen
-                                            </a>
-                                        )}
-                                    </div>
-                                    <textarea
-                                        placeholder="Historia"
-                                        value={aboutConfigForm.history_text}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, history_text: e.target.value })}
-                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <textarea
-                                        placeholder="Misión"
-                                        value={aboutConfigForm.mission_text}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, mission_text: e.target.value })}
-                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <textarea
-                                        placeholder="Visión"
-                                        value={aboutConfigForm.vision_text}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, vision_text: e.target.value })}
-                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Lema"
-                                        value={aboutConfigForm.lema_text}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, lema_text: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <textarea
-                                        placeholder="Compromiso texto 1"
-                                        value={aboutConfigForm.commitment_text_1}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, commitment_text_1: e.target.value })}
-                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <textarea
-                                        placeholder="Compromiso texto 2"
-                                        value={aboutConfigForm.commitment_text_2}
-                                        onChange={(e) => setAboutConfigForm({ ...aboutConfigForm, commitment_text_2: e.target.value })}
-                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className="md:col-span-2">
-                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Acerca</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-lg font-bold mb-4">Valores</h3>
-                            <form onSubmit={handleSaveAboutValue} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <input
-                                    type="text"
-                                    placeholder="Icono"
-                                    value={aboutValueForm.icon}
-                                    onChange={(e) => setAboutValueForm({ ...aboutValueForm, icon: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Título"
-                                    value={aboutValueForm.title}
-                                    onChange={(e) => setAboutValueForm({ ...aboutValueForm, title: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Descripción"
-                                    value={aboutValueForm.description}
-                                    onChange={(e) => setAboutValueForm({ ...aboutValueForm, description: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-3">
-                                    <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                        {editingAboutValue ? 'Actualizar' : 'Agregar'}
-                                    </button>
-                                </div>
-                            </form>
-                            <div className="mt-4 space-y-2">
-                                {aboutValues.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div>
-                                            <div className="font-semibold">{item.icon} {item.title}</div>
-                                            <div className="text-xs text-slate-500">{item.description}</div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { setEditingAboutValue(item); setAboutValueForm({ icon: item.icon || '', title: item.title, description: item.description }); }} className="text-blue-500">Editar</button>
-                                            <button onClick={() => handleDeleteAboutValue(item.id)} className="text-red-500">Eliminar</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {activeNav === 'gallery' && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        <section>
-                            <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-blue-800">photo_library</span> Galería
-                                </h3>
-                                <form onSubmit={handleSaveGalleryItem} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <select
-                                        value={galleryForm.section}
-                                        onChange={(e) => setGalleryForm({ ...galleryForm, section: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    >
-                                        <option value="instalaciones">Instalaciones</option>
-                                        <option value="actividades">Actividades</option>
-                                        <option value="clubs">Clubs</option>
-                                        <option value="cbta">CBTa 134</option>
-                                        <option value="galeria">Galería General</option>
-                                    </select>
                                     <input
                                         type="text"
                                         placeholder="Título"
-                                        value={galleryForm.title}
-                                        onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                                        value={uiHeaderForm.title_text}
+                                        onChange={(e) => setUiHeaderForm({ ...uiHeaderForm, title_text: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <input
-                                        type="text"
-                                        placeholder="Descripción"
-                                        value={galleryForm.description}
-                                        onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
+                                    <div className="md:col-span-2">
+                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Header</button>
+                                    </div>
+                                </form>
+
+                                <div className="mt-6">
+                                    <h4 className="font-bold mb-3">Links Header</h4>
+                                    <form onSubmit={handleSaveHeaderLink} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Label"
+                                            value={uiHeaderLinkForm.label}
+                                            onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, label: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Path (ej: noticias)"
+                                            value={uiHeaderLinkForm.path}
+                                            onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, path: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Href (ej: /noticias)"
+                                            value={uiHeaderLinkForm.href}
+                                            onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, href: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-3">
+                                            <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                                {editingHeaderLink ? 'Actualizar' : 'Agregar'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                    <div className="mt-4 space-y-2">
+                                        {uiHeaderLinks.map((item) => (
+                                            <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                                <div className="font-semibold">{item.label} • {item.path}</div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setEditingHeaderLink(item); setUiHeaderLinkForm({ label: item.label, path: item.path, href: item.href || '' }); }} className="text-blue-500">Editar</button>
+                                                    <button onClick={() => handleDeleteHeaderLink(item.id)} className="text-red-500">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Carrusel (Hero)</h3>
+                                <form onSubmit={handleSaveHero} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input
                                         type="text"
                                         placeholder="URL de imagen"
-                                        value={galleryForm.image_url}
-                                        onChange={(e) => setGalleryForm({ ...galleryForm, image_url: e.target.value })}
+                                        value={heroForm.image_url}
+                                        onChange={(e) => setHeroForm({ ...heroForm, image_url: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center md:col-span-2">
                                         <input
                                             type="file"
                                             accept="image/*"
-                                            onChange={(e) => setGalleryFile(e.target.files?.[0] || null)}
+                                            onChange={(e) => setHeroFile(e.target.files?.[0] || null)}
                                             className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                         />
                                         <button
                                             type="button"
-                                            onClick={handleUploadGalleryImage}
-                                            disabled={uploadingGallery || !galleryFile}
+                                            onClick={handleUploadHero}
+                                            disabled={uploadingHero || !heroFile}
                                             className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
                                         >
-                                            {uploadingGallery ? 'Subiendo...' : 'Subir imagen'}
+                                            {uploadingHero ? 'Subiendo...' : 'Subir imagen'}
                                         </button>
-                                        {galleryForm.image_url && (
-                                            <a
-                                                href={galleryForm.image_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-blue-500"
-                                            >
-                                                Ver imagen
-                                            </a>
+                                        {heroForm.image_url && (
+                                            <a href={heroForm.image_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver imagen</a>
                                         )}
                                     </div>
                                     <label className="flex items-center gap-2 text-sm">
                                         <input
                                             type="checkbox"
-                                            checked={galleryForm.is_locked}
-                                            onChange={(e) => setGalleryForm({ ...galleryForm, is_locked: e.target.checked })}
+                                            checked={heroForm.is_locked}
+                                            onChange={(e) => setHeroForm({ ...heroForm, is_locked: e.target.checked })}
                                         />
-                                        Bloquear (no se puede eliminar)
+                                        Bloquear
                                     </label>
                                     <div className="md:col-span-2">
                                         <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                            {editingGalleryItem ? 'Actualizar' : 'Agregar'}
+                                            {editingHero ? 'Actualizar' : 'Agregar'}
                                         </button>
                                     </div>
                                 </form>
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-lg font-bold mb-4">Imágenes</h3>
-                            <div className="space-y-3">
-                                {galleryItems.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <img src={item.image_url} alt={item.title} className="w-14 h-14 rounded-lg object-cover" />
-                                            <div>
-                                                <div className="font-semibold">{item.title}</div>
-                                                <div className="text-xs text-slate-500">{item.section} • {item.description}</div>
+                                <div className="mt-4 space-y-2">
+                                    {heroSlides.map((item) => (
+                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <img src={item.image_url} alt="slide" className="w-14 h-14 rounded-lg object-cover" />
+                                                <span className="text-xs">{item.image_url}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setEditingHero(item); setHeroForm({ image_url: item.image_url, is_locked: item.is_locked }); }} className="text-blue-500">Editar</button>
+                                                <button onClick={() => handleDeleteHero(item)} className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={item.is_locked}>Eliminar</button>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setEditingGalleryItem(item);
-                                                    setGalleryForm({
-                                                        section: item.section,
-                                                        title: item.title,
-                                                        description: item.description || '',
-                                                        image_url: item.image_url,
-                                                        is_locked: item.is_locked
-                                                    });
-                                                }}
-                                                className="text-blue-500"
-                                            >
-                                                Editar
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteGalleryItem(item)}
-                                                className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                disabled={item.is_locked}
-                                            >
-                                                Eliminar
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {activeNav === 'ui' && (
-                    <UiInterfazAdmin
-                        darkMode={darkMode}
-                        uiHeaderForm={uiHeaderForm}
-                        setUiHeaderForm={setUiHeaderForm}
-                        handleSaveUiHeader={handleSaveUiHeader}
-                        uiHeaderLinks={uiHeaderLinks}
-                        uiHeaderLinkForm={uiHeaderLinkForm}
-                        setUiHeaderLinkForm={setUiHeaderLinkForm}
-                        editingHeaderLink={editingHeaderLink}
-                        setEditingHeaderLink={setEditingHeaderLink}
-                        handleSaveHeaderLink={handleSaveHeaderLink}
-                        handleDeleteHeaderLink={handleDeleteHeaderLink}
-                        uiFooterForm={uiFooterForm}
-                        setUiFooterForm={setUiFooterForm}
-                        handleSaveUiFooter={handleSaveUiFooter}
-                        uiFooterLinks={uiFooterLinks}
-                        uiFooterLinkForm={uiFooterLinkForm}
-                        setUiFooterLinkForm={setUiFooterLinkForm}
-                        editingFooterLink={editingFooterLink}
-                        setEditingFooterLink={setEditingFooterLink}
-                        handleSaveFooterLink={handleSaveFooterLink}
-                        handleDeleteFooterLink={handleDeleteFooterLink}
-                    />
-                )}
-                {activeNav === 'ui_OLD_REMOVED' && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Header</h3>
-                            <form onSubmit={handleSaveUiHeader} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="URL Logo"
-                                    value={uiHeaderForm.logo_url}
-                                    onChange={(e) => setUiHeaderForm({ ...uiHeaderForm, logo_url: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Título"
-                                    value={uiHeaderForm.title_text}
-                                    onChange={(e) => setUiHeaderForm({ ...uiHeaderForm, title_text: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Header</button>
+                                    ))}
                                 </div>
-                            </form>
+                            </section>
 
-                            <div className="mt-6">
-                                <h4 className="font-bold mb-3">Links Header</h4>
-                                <form onSubmit={handleSaveHeaderLink} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Opciones de Inicio</h3>
+                                <form onSubmit={handleSaveHomeOption} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input
                                         type="text"
-                                        placeholder="Label"
-                                        value={uiHeaderLinkForm.label}
-                                        onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, label: e.target.value })}
+                                        placeholder="Título"
+                                        value={homeOptionForm.title}
+                                        onChange={(e) => setHomeOptionForm({ ...homeOptionForm, title: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Descripción"
+                                        value={homeOptionForm.description}
+                                        onChange={(e) => setHomeOptionForm({ ...homeOptionForm, description: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                     <input
                                         type="text"
                                         placeholder="Path (ej: noticias)"
-                                        value={uiHeaderLinkForm.path}
-                                        onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, path: e.target.value })}
+                                        value={homeOptionForm.path}
+                                        onChange={(e) => setHomeOptionForm({ ...homeOptionForm, path: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Href (ej: /noticias)"
-                                        value={uiHeaderLinkForm.href}
-                                        onChange={(e) => setUiHeaderLinkForm({ ...uiHeaderLinkForm, href: e.target.value })}
+                                        placeholder="URL de imagen"
+                                        value={homeOptionForm.image_url}
+                                        onChange={(e) => setHomeOptionForm({ ...homeOptionForm, image_url: e.target.value })}
                                         className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <div className="md:col-span-3">
-                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                            {editingHeaderLink ? 'Actualizar' : 'Agregar'}
-                                        </button>
-                                    </div>
-                                </form>
-                                <div className="mt-4 space-y-2">
-                                    {uiHeaderLinks.map((item) => (
-                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                            <div className="font-semibold">{item.label} • {item.path}</div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => { setEditingHeaderLink(item); setUiHeaderLinkForm({ label: item.label, path: item.path, href: item.href || '' }); }} className="text-blue-500">Editar</button>
-                                                <button onClick={() => handleDeleteHeaderLink(item.id)} className="text-red-500">Eliminar</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Carrusel (Hero)</h3>
-                            <form onSubmit={handleSaveHero} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="URL de imagen"
-                                    value={heroForm.image_url}
-                                    onChange={(e) => setHeroForm({ ...heroForm, image_url: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center md:col-span-2">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setHeroFile(e.target.files?.[0] || null)}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleUploadHero}
-                                        disabled={uploadingHero || !heroFile}
-                                        className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
-                                    >
-                                        {uploadingHero ? 'Subiendo...' : 'Subir imagen'}
-                                    </button>
-                                    {heroForm.image_url && (
-                                        <a href={heroForm.image_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver imagen</a>
-                                    )}
-                                </div>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={heroForm.is_locked}
-                                        onChange={(e) => setHeroForm({ ...heroForm, is_locked: e.target.checked })}
-                                    />
-                                    Bloquear
-                                </label>
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                        {editingHero ? 'Actualizar' : 'Agregar'}
-                                    </button>
-                                </div>
-                            </form>
-                            <div className="mt-4 space-y-2">
-                                {heroSlides.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <img src={item.image_url} alt="slide" className="w-14 h-14 rounded-lg object-cover" />
-                                            <span className="text-xs">{item.image_url}</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { setEditingHero(item); setHeroForm({ image_url: item.image_url, is_locked: item.is_locked }); }} className="text-blue-500">Editar</button>
-                                            <button onClick={() => handleDeleteHero(item)} className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={item.is_locked}>Eliminar</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Opciones de Inicio</h3>
-                            <form onSubmit={handleSaveHomeOption} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Título"
-                                    value={homeOptionForm.title}
-                                    onChange={(e) => setHomeOptionForm({ ...homeOptionForm, title: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Descripción"
-                                    value={homeOptionForm.description}
-                                    onChange={(e) => setHomeOptionForm({ ...homeOptionForm, description: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Path (ej: noticias)"
-                                    value={homeOptionForm.path}
-                                    onChange={(e) => setHomeOptionForm({ ...homeOptionForm, path: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="URL de imagen"
-                                    value={homeOptionForm.image_url}
-                                    onChange={(e) => setHomeOptionForm({ ...homeOptionForm, image_url: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setHomeOptionFile(e.target.files?.[0] || null)}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleUploadHomeOption}
-                                        disabled={uploadingHomeOption || !homeOptionFile}
-                                        className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
-                                    >
-                                        {uploadingHomeOption ? 'Subiendo...' : 'Subir imagen'}
-                                    </button>
-                                    {homeOptionForm.image_url && (
-                                        <a href={homeOptionForm.image_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver imagen</a>
-                                    )}
-                                </div>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={homeOptionForm.is_locked}
-                                        onChange={(e) => setHomeOptionForm({ ...homeOptionForm, is_locked: e.target.checked })}
-                                    />
-                                    Bloquear
-                                </label>
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                        {editingHomeOption ? 'Actualizar' : 'Agregar'}
-                                    </button>
-                                </div>
-                            </form>
-                            <div className="mt-4 space-y-2">
-                                {homeOptionsAdmin.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <img src={item.image_url} alt={item.title} className="w-14 h-14 rounded-lg object-cover" />
-                                            <div>
-                                                <div className="font-semibold">{item.title}</div>
-                                                <div className="text-xs text-slate-500">{item.path}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { setEditingHomeOption(item); setHomeOptionForm({ image_url: item.image_url, title: item.title, description: item.description || '', path: item.path, is_locked: item.is_locked }); }} className="text-blue-500">Editar</button>
-                                            <button onClick={() => handleDeleteHomeOption(item)} className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={item.is_locked}>Eliminar</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Footer</h3>
-                            <form onSubmit={handleSaveUiFooter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Nombre"
-                                    value={uiFooterForm.school_name}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, school_name: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Ubicación"
-                                    value={uiFooterForm.location_text}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, location_text: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Tagline"
-                                    value={uiFooterForm.tagline_text}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, tagline_text: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Copyright"
-                                    value={uiFooterForm.copyright_text}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, copyright_text: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Derechos"
-                                    value={uiFooterForm.rights_text}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, rights_text: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <textarea
-                                    placeholder="Legal 1"
-                                    value={uiFooterForm.legal_text_1}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_1: e.target.value })}
-                                    className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <textarea
-                                    placeholder="Legal 2"
-                                    value={uiFooterForm.legal_text_2}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_2: e.target.value })}
-                                    className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <textarea
-                                    placeholder="Legal 3"
-                                    value={uiFooterForm.legal_text_3}
-                                    onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_3: e.target.value })}
-                                    className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Footer</button>
-                                </div>
-                            </form>
-
-                            <div className="mt-6">
-                                <h4 className="font-bold mb-3">Links Footer</h4>
-                                <form onSubmit={handleSaveFooterLink} className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Label"
-                                        value={uiFooterLinkForm.label}
-                                        onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, label: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="URL"
-                                        value={uiFooterLinkForm.href}
-                                        onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, href: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Icon URL"
-                                        value={uiFooterLinkForm.icon_url}
-                                        onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, icon_url: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Clase (facebook/maps)"
-                                        value={uiFooterLinkForm.style_class}
-                                        onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, style_class: e.target.value })}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className="md:col-span-4">
-                                        <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
-                                            {editingFooterLink ? 'Actualizar' : 'Agregar'}
-                                        </button>
-                                    </div>
-                                </form>
-                                <div className="mt-4 space-y-2">
-                                    {uiFooterLinks.map((item) => (
-                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                            <div className="font-semibold">{item.label} • {item.href}</div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => { setEditingFooterLink(item); setUiFooterLinkForm({ label: item.label, href: item.href, icon_url: item.icon_url || '', style_class: item.style_class || '' }); }} className="text-blue-500">Editar</button>
-                                                <button onClick={() => handleDeleteFooterLink(item.id)} className="text-red-500">Eliminar</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {activeNav === 'creditos' && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Configuración Créditos</h3>
-                            <form onSubmit={handleSaveCreditsConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Título"
-                                    value={creditsConfigForm.title}
-                                    onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, title: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Subtítulo"
-                                    value={creditsConfigForm.subtitle}
-                                    onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, subtitle: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Título licencia (opcional)"
-                                    value={creditsConfigForm.license_title}
-                                    onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, license_title: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <textarea
-                                    placeholder="Texto licencia (opcional)"
-                                    value={creditsConfigForm.license_text}
-                                    onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, license_text: e.target.value })}
-                                    className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Créditos</button>
-                                </div>
-                            </form>
-                        </section>
-
-                        <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                            <h3 className="text-xl font-bold mb-6">Autores</h3>
-                            <form onSubmit={handleSaveCreditsAuthor} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Nombre completo"
-                                    value={creditsAuthorForm.full_name}
-                                    onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, full_name: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Carrera"
-                                    value={creditsAuthorForm.career}
-                                    onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, career: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Descripción"
-                                    value={creditsAuthorForm.description}
-                                    onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, description: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="URL foto"
-                                    value={creditsAuthorForm.photo_url}
-                                    onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, photo_url: e.target.value })}
-                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                />
-                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setCreditsFile(e.target.files?.[0] || null)}
-                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleUploadCreditsPhoto}
-                                        disabled={uploadingCredits || !creditsFile}
-                                        className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
-                                    >
-                                        {uploadingCredits ? 'Subiendo...' : 'Subir foto'}
-                                    </button>
-                                    {creditsAuthorForm.photo_url && (
-                                        <a href={creditsAuthorForm.photo_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver foto</a>
-                                    )}
-                                </div>
-                                <div className="md:col-span-2">
-                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                        {editingCreditsAuthor ? 'Actualizar' : 'Agregar'}
-                                    </button>
-                                </div>
-                            </form>
-
-                            <div className="mt-4 space-y-2">
-                                {creditsAuthors.map((item) => (
-                                    <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <img src={item.photo_url} alt={item.full_name} className="w-14 h-14 rounded-lg object-cover" />
-                                            <div>
-                                                <div className="font-semibold">{item.full_name}</div>
-                                                <div className="text-xs text-slate-500">{item.career}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { setEditingCreditsAuthor(item); setCreditsAuthorForm({ full_name: item.full_name, career: item.career, description: item.description || '', photo_url: item.photo_url || '' }); }} className="text-blue-500">Editar</button>
-                                            <button onClick={() => handleDeleteCreditsAuthor(item.id)} className="text-red-500">Eliminar</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {(activeNav === 'dashboard' || activeNav === 'alumnos' || activeNav === 'avisos' || activeNav === 'clubes' || activeNav === 'carreras' || activeNav === 'maestros' || activeNav === 'chatbot' || activeNav === 'gmail' || activeNav === 'storage' || activeNav === 'access' || activeNav === 'preregistros') && (
-                    <div className="max-w-6xl mx-auto space-y-10">
-                        {activeNav === 'dashboard' && (
-                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                <h3 className="text-xl font-bold mb-4">Panel principal</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {[
-                                        { key: 'avisos', label: 'Avisos', icon: 'campaign' },
-                                        { key: 'clubes', label: 'Clubes', icon: 'sports_esports' },
-                                        { key: 'carreras', label: 'Carreras', icon: 'engineering' },
-                                        { key: 'maestros', label: 'Maestros', icon: 'co_present' },
-                                        { key: 'alumnos', label: 'Alumnos', icon: 'group' },
-                                        { key: 'chatbot', label: 'IA Chatbot', icon: 'smart_toy' },
-                                        { key: 'gmail', label: 'Notificaciones Gmail', icon: 'mail' },
-                                        { key: 'storage', label: 'Almacenamiento', icon: 'storage' }
-                                    ].map((item) => (
+                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => setHomeOptionFile(e.target.files?.[0] || null)}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
                                         <button
-                                            key={item.key}
-                                            onClick={() => setActiveNav(item.key)}
-                                            className={`p-6 rounded-3xl text-left border ${darkMode ? 'bg-slate-900 border-slate-700 hover:border-blue-400' : 'bg-white border-slate-100 hover:border-blue-800'} transition-all`}
+                                            type="button"
+                                            onClick={handleUploadHomeOption}
+                                            disabled={uploadingHomeOption || !homeOptionFile}
+                                            className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
                                         >
-                                            <span className="material-symbols-outlined text-blue-800 text-2xl">{item.icon}</span>
-                                            <div className="mt-2 font-bold">{item.label}</div>
+                                            {uploadingHomeOption ? 'Subiendo...' : 'Subir imagen'}
                                         </button>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
-
-                        {activeNav === 'alumnos' && (
-                            <AlumnosAdmin darkMode={darkMode} />
-                        )}
-
-                        {activeNav === 'avisos' && (
-                            <>
-                                <section>
-                                    <div className={`rounded-[2rem] p-6 md:p-8 shadow-xl border ${darkMode ? 'bg-slate-800 border-slate-700 shadow-none' : 'bg-white border-white shadow-slate-200/50'}`}>
-                                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-blue-800">add_circle</span> Nuevo Aviso Global
-                                        </h3>
-                                        <form onSubmit={handlePostAnnouncement} className="space-y-4">
-                                            <input
-                                                type="text"
-                                                value={announcement.titulo}
-                                                onChange={(e) => setAnnouncement({ ...announcement, titulo: e.target.value })}
-                                                placeholder="¿Qué quieres anunciar hoy?"
-                                                className={`w-full text-lg border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-800/20 transition-all ${darkMode ? 'bg-slate-900 text-white placeholder-slate-500' : 'bg-slate-50'}`}
-                                                required
-                                            />
-                                            <textarea
-                                                value={announcement.contenido}
-                                                onChange={(e) => setAnnouncement({ ...announcement, contenido: e.target.value })}
-                                                placeholder="Describe el aviso detalladamente..."
-                                                rows="3"
-                                                className={`w-full border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-800/20 transition-all ${darkMode ? 'bg-slate-900 text-white placeholder-slate-500' : 'bg-slate-50'}`}
-                                                required
-                                            />
-                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                                                <div className="flex items-center gap-2 w-full sm:w-auto">
-                                                    <label className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors w-full sm:w-auto ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                                                        <span className="material-symbols-outlined text-xl">image</span>
-                                                        <span className="text-sm font-semibold">Imagen/Video</span>
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*,video/*"
-                                                            onChange={(e) => setMediaFile(e.target.files[0])}
-                                                            className="hidden"
-                                                        />
-                                                    </label>
-                                                </div>
-                                                <button
-                                                    type="submit"
-                                                    disabled={uploading}
-                                                    className="w-full sm:w-auto px-8 py-3 bg-blue-800 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-                                                >
-                                                    {uploading ? 'Subiendo...' : (editingPost ? 'Actualizar' : 'Publicar Ahora')}
-                                                </button>
-                                            </div>
-                                            {mediaFile && (
-                                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    📎 {mediaFile.name}
-                                                </p>
-                                            )}
-                                        </form>
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-lg font-bold">Avisos Activos</h3>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {posts.length === 0 ? (
-                                            <div className={`p-8 rounded-3xl text-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} border`}>
-                                                <span className="material-symbols-outlined text-4xl text-slate-400 mb-2">notifications_off</span>
-                                                <p className="text-slate-500">No hay avisos publicados.</p>
-                                            </div>
-                                        ) : (
-                                            posts.map(post => (
-                                                <div key={post.id} className={`p-5 rounded-3xl border shadow-sm flex flex-col md:flex-row gap-5 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                                    {post.media_url && (
-                                                        <div className={`w-full md:w-48 h-32 flex-shrink-0 rounded-2xl overflow-hidden ${darkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
-                                                            {post.media_type === 'video' ? (
-                                                                <video src={post.media_url} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <img src={post.media_url} alt="Announcement" className="w-full h-full object-cover" />
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    <div className="flex-1 flex flex-col justify-between">
-                                                        <div>
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <h4 className="font-bold text-lg leading-tight">{post.titulo}</h4>
-                                                                <div className="flex gap-1">
-                                                                    <button
-                                                                        onClick={() => handleEditPost(post)}
-                                                                        className={`p-1.5 transition-colors ${darkMode ? 'text-slate-400 hover:text-blue-400' : 'text-slate-400 hover:text-blue-800'}`}
-                                                                    >
-                                                                        <span className="material-symbols-outlined text-xl">edit</span>
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleDeletePost(post.id)}
-                                                                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                                                                    >
-                                                                        <span className="material-symbols-outlined text-xl">delete</span>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <p className={`text-sm line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{post.contenido}</p>
-                                                        </div>
-                                                        <div className="mt-4 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-400">
-                                                            <span className="flex items-center gap-1">
-                                                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                                                {new Date(post.created_at).toLocaleDateString()}
-                                                            </span>
-                                                            <span className={`px-2.5 py-1 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-800'}`}>Académico</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
+                                        {homeOptionForm.image_url && (
+                                            <a href={homeOptionForm.image_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver imagen</a>
                                         )}
                                     </div>
-                                </section>
-                            </>
-                        )}
-
-                        {activeNav === 'maestros' && (
-                            <>
-                                <section>
-                                    <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-blue-800">co_present</span> Configuración Portal Docente
-                                        </h3>
-                                        <form onSubmit={handleSaveTeachersConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <input
-                                                type="text"
-                                                placeholder="Título"
-                                                value={teachersConfigForm.title}
-                                                onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, title: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Subtítulo"
-                                                value={teachersConfigForm.subtitle}
-                                                onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, subtitle: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="URL de imagen principal"
-                                                value={teachersConfigForm.hero_image_url}
-                                                onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, hero_image_url: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Texto del botón"
-                                                value={teachersConfigForm.cta_label}
-                                                onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, cta_label: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <div className="md:col-span-2">
-                                                <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Configuración</button>
-                                            </div>
-                                        </form>
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={homeOptionForm.is_locked}
+                                            onChange={(e) => setHomeOptionForm({ ...homeOptionForm, is_locked: e.target.checked })}
+                                        />
+                                        Bloquear
+                                    </label>
+                                    <div className="md:col-span-2">
+                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
+                                            {editingHomeOption ? 'Actualizar' : 'Agregar'}
+                                        </button>
                                     </div>
-                                </section>
-
-                                <section>
-                                    <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
-                                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-blue-800">link</span> Recursos Docentes
-                                        </h3>
-                                        <form onSubmit={handleSaveTeacherLink} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <input
-                                                type="text"
-                                                placeholder="Nombre"
-                                                value={teacherLinkForm.name}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, name: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="url"
-                                                placeholder="URL"
-                                                value={teacherLinkForm.url}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, url: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Descripción"
-                                                value={teacherLinkForm.description}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, description: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Icono (emoji)"
-                                                value={teacherLinkForm.icon}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, icon: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Color (hex o nombre)"
-                                                value={teacherLinkForm.color}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, color: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <input
-                                                type="number"
-                                                placeholder="Orden (opcional)"
-                                                value={teacherLinkForm.order_index}
-                                                onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, order_index: e.target.value })}
-                                                className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                            <label className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={teacherLinkForm.is_active}
-                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, is_active: e.target.checked })}
-                                                />
-                                                Visible en el portal
-                                            </label>
-                                            <div className="md:col-span-2">
-                                                <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
-                                                    {editingTeacherLink ? 'Actualizar' : 'Agregar'}
-                                                </button>
-                                            </div>
-                                        </form>
-
-                                        <div className="mt-6 space-y-3">
-                                            {teacherLinks.map((item) => (
-                                                <div key={item.id} className={`p-4 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                                    <div>
-                                                        <div className="font-semibold flex items-center gap-2">
-                                                            <span>{item.icon || '🔗'}</span>
-                                                            <span>{item.name}</span>
-                                                            {!item.is_active && <span className="text-xs text-slate-500">(oculto)</span>}
-                                                        </div>
-                                                        <div className="text-sm text-slate-500">{item.description}</div>
-                                                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500">{item.url}</a>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingTeacherLink(item);
-                                                                setTeacherLinkForm({
-                                                                    name: item.name || '',
-                                                                    description: item.description || '',
-                                                                    icon: item.icon || '',
-                                                                    url: item.url || '',
-                                                                    color: item.color || '',
-                                                                    order_index: item.order_index || '',
-                                                                    is_active: item.is_active !== false
-                                                                });
-                                                            }}
-                                                            className="text-blue-500"
-                                                        >
-                                                            Editar
-                                                        </button>
-                                                        <button onClick={() => handleDeleteTeacherLink(item.id)} className="text-red-500">Eliminar</button>
-                                                    </div>
+                                </form>
+                                <div className="mt-4 space-y-2">
+                                    {homeOptionsAdmin.map((item) => (
+                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <img src={item.image_url} alt={item.title} className="w-14 h-14 rounded-lg object-cover" />
+                                                <div>
+                                                    <div className="font-semibold">{item.title}</div>
+                                                    <div className="text-xs text-slate-500">{item.path}</div>
                                                 </div>
-                                            ))}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setEditingHomeOption(item); setHomeOptionForm({ image_url: item.image_url, title: item.title, description: item.description || '', path: item.path, is_locked: item.is_locked }); }} className="text-blue-500">Editar</button>
+                                                <button onClick={() => handleDeleteHomeOption(item)} className={`text-red-500 ${item.is_locked ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={item.is_locked}>Eliminar</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </section>
-                            </>
-                        )}
-
-                        {activeNav === 'clubes' && (
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">Clubes Escolares</h3>
-                                    <button
-                                        onClick={() => { setClubToEdit(null); setShowClubModal(true); }}
-                                        className={`p-1.5 rounded-lg ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}
-                                    >
-                                        <span className="material-symbols-outlined text-sm">add</span>
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 gap-3">
-                                    {clubs.length === 0 ? (
-                                        <p className="text-center text-slate-500 py-4">No hay clubes registrados.</p>
-                                    ) : (
-                                        clubs.map(club => (
-                                            <div
-                                                key={club.id}
-                                                className={`flex items-center gap-4 p-4 rounded-2xl border shadow-sm ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}
-                                            >
-                                                <div className={`w-12 h-12 flex-shrink-0 text-2xl flex items-center justify-center rounded-xl ${darkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
-                                                    {club.icono || '🎯'}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-bold text-sm">{club.nombre}</h4>
-                                                    <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{club.categoria}</p>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <button
-                                                        onClick={() => handleEditClub(club)}
-                                                        className="p-1 text-slate-400 hover:text-blue-500"
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">edit</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteClub(club.id)}
-                                                        className="p-1 text-slate-400 hover:text-red-500"
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">delete</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
+                                    ))}
                                 </div>
                             </section>
-                        )}
 
-                        {activeNav === 'carreras' && (
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">Carreras Técnicas</h3>
-                                    <button
-                                        onClick={() => { setCareerToEdit(null); setShowCareerModal(true); }}
-                                        className={`p-1.5 rounded-lg ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}
-                                    >
-                                        <span className="material-symbols-outlined text-sm">add</span>
-                                    </button>
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Footer</h3>
+                                <form onSubmit={handleSaveUiFooter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Nombre"
+                                        value={uiFooterForm.school_name}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, school_name: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Ubicación"
+                                        value={uiFooterForm.location_text}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, location_text: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Tagline"
+                                        value={uiFooterForm.tagline_text}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, tagline_text: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Copyright"
+                                        value={uiFooterForm.copyright_text}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, copyright_text: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Derechos"
+                                        value={uiFooterForm.rights_text}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, rights_text: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <textarea
+                                        placeholder="Legal 1"
+                                        value={uiFooterForm.legal_text_1}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_1: e.target.value })}
+                                        className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <textarea
+                                        placeholder="Legal 2"
+                                        value={uiFooterForm.legal_text_2}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_2: e.target.value })}
+                                        className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <textarea
+                                        placeholder="Legal 3"
+                                        value={uiFooterForm.legal_text_3}
+                                        onChange={(e) => setUiFooterForm({ ...uiFooterForm, legal_text_3: e.target.value })}
+                                        className={`p-3 rounded-xl border min-h-[100px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <div className="md:col-span-2">
+                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Footer</button>
+                                    </div>
+                                </form>
+
+                                <div className="mt-6">
+                                    <h4 className="font-bold mb-3">Links Footer</h4>
+                                    <form onSubmit={handleSaveFooterLink} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Label"
+                                            value={uiFooterLinkForm.label}
+                                            onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, label: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="URL"
+                                            value={uiFooterLinkForm.href}
+                                            onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, href: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Icon URL"
+                                            value={uiFooterLinkForm.icon_url}
+                                            onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, icon_url: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Clase (facebook/maps)"
+                                            value={uiFooterLinkForm.style_class}
+                                            onChange={(e) => setUiFooterLinkForm({ ...uiFooterLinkForm, style_class: e.target.value })}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <div className="md:col-span-4">
+                                            <button type="submit" className="px-5 py-2.5 bg-blue-800 text-white font-semibold rounded-xl">
+                                                {editingFooterLink ? 'Actualizar' : 'Agregar'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                    <div className="mt-4 space-y-2">
+                                        {uiFooterLinks.map((item) => (
+                                            <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                                <div className="font-semibold">{item.label} • {item.href}</div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setEditingFooterLink(item); setUiFooterLinkForm({ label: item.label, href: item.href, icon_url: item.icon_url || '', style_class: item.style_class || '' }); }} className="text-blue-500">Editar</button>
+                                                    <button onClick={() => handleDeleteFooterLink(item.id)} className="text-red-500">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    {careers.length === 0 ? (
-                                        <p className="text-center text-slate-500 py-4">No hay carreras registradas.</p>
-                                    ) : (
-                                        careers.map(career => (
-                                            <div
-                                                key={career.id}
-                                                className={`p-5 rounded-3xl border shadow-sm group cursor-pointer transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 hover:border-blue-400' : 'bg-white border-slate-100 hover:border-blue-800'}`}
+                            </section>
+                        </div>
+                    )
+                }
+
+                {
+                    activeNav === 'creditos' && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Configuración Créditos</h3>
+                                <form onSubmit={handleSaveCreditsConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Título"
+                                        value={creditsConfigForm.title}
+                                        onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, title: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Subtítulo"
+                                        value={creditsConfigForm.subtitle}
+                                        onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, subtitle: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Título licencia (opcional)"
+                                        value={creditsConfigForm.license_title}
+                                        onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, license_title: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <textarea
+                                        placeholder="Texto licencia (opcional)"
+                                        value={creditsConfigForm.license_text}
+                                        onChange={(e) => setCreditsConfigForm({ ...creditsConfigForm, license_text: e.target.value })}
+                                        className={`p-3 rounded-xl border min-h-[120px] ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <div className="md:col-span-2">
+                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Créditos</button>
+                                    </div>
+                                </form>
+                            </section>
+
+                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                <h3 className="text-xl font-bold mb-6">Autores</h3>
+                                <form onSubmit={handleSaveCreditsAuthor} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Nombre completo"
+                                        value={creditsAuthorForm.full_name}
+                                        onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, full_name: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Carrera"
+                                        value={creditsAuthorForm.career}
+                                        onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, career: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Descripción"
+                                        value={creditsAuthorForm.description}
+                                        onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, description: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="URL foto"
+                                        value={creditsAuthorForm.photo_url}
+                                        onChange={(e) => setCreditsAuthorForm({ ...creditsAuthorForm, photo_url: e.target.value })}
+                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                    />
+                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => setCreditsFile(e.target.files?.[0] || null)}
+                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleUploadCreditsPhoto}
+                                            disabled={uploadingCredits || !creditsFile}
+                                            className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl disabled:opacity-50"
+                                        >
+                                            {uploadingCredits ? 'Subiendo...' : 'Subir foto'}
+                                        </button>
+                                        {creditsAuthorForm.photo_url && (
+                                            <a href={creditsAuthorForm.photo_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500">Ver foto</a>
+                                        )}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
+                                            {editingCreditsAuthor ? 'Actualizar' : 'Agregar'}
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div className="mt-4 space-y-2">
+                                    {creditsAuthors.map((item) => (
+                                        <div key={item.id} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <img src={item.photo_url} alt={item.full_name} className="w-14 h-14 rounded-lg object-cover" />
+                                                <div>
+                                                    <div className="font-semibold">{item.full_name}</div>
+                                                    <div className="text-xs text-slate-500">{item.career}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setEditingCreditsAuthor(item); setCreditsAuthorForm({ full_name: item.full_name, career: item.career, description: item.description || '', photo_url: item.photo_url || '' }); }} className="text-blue-500">Editar</button>
+                                                <button onClick={() => handleDeleteCreditsAuthor(item.id)} className="text-red-500">Eliminar</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    )
+                }
+
+                {
+                    (activeNav === 'dashboard' || activeNav === 'alumnos' || activeNav === 'avisos' || activeNav === 'clubes' || activeNav === 'carreras' || activeNav === 'maestros' || activeNav === 'chatbot' || activeNav === 'gmail' || activeNav === 'storage' || activeNav === 'access' || activeNav === 'preregistros') && (
+                        <div className="max-w-6xl mx-auto space-y-10">
+                            {activeNav === 'dashboard' && (
+                                <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                    <h3 className="text-xl font-bold mb-4">Panel principal</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { key: 'avisos', label: 'Avisos', icon: 'campaign' },
+                                            { key: 'clubes', label: 'Clubes', icon: 'sports_esports' },
+                                            { key: 'carreras', label: 'Carreras', icon: 'engineering' },
+                                            { key: 'maestros', label: 'Maestros', icon: 'co_present' },
+                                            { key: 'alumnos', label: 'Alumnos', icon: 'group' },
+                                            { key: 'chatbot', label: 'IA Chatbot', icon: 'smart_toy' },
+                                            { key: 'gmail', label: 'Notificaciones Gmail', icon: 'mail' },
+                                            { key: 'storage', label: 'Almacenamiento', icon: 'storage' }
+                                        ].map((item) => (
+                                            <button
+                                                key={item.key}
+                                                onClick={() => setActiveNav(item.key)}
+                                                className={`p-6 rounded-3xl text-left border ${darkMode ? 'bg-slate-900 border-slate-700 hover:border-blue-400' : 'bg-white border-slate-100 hover:border-blue-800'} transition-all`}
                                             >
-                                                <div className="flex items-start gap-4 mb-4">
-                                                    <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center overflow-hidden">
-                                                        {career.imagen_url ? (
-                                                            <img src={career.imagen_url} alt={career.nombre} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <span className="text-white text-2xl">📚</span>
+                                                <span className="material-symbols-outlined text-blue-800 text-2xl">{item.icon}</span>
+                                                <div className="mt-2 font-bold">{item.label}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeNav === 'alumnos' && (
+                                <AlumnosAdmin darkMode={darkMode} />
+                            )}
+
+                            {activeNav === 'avisos' && (
+                                <>
+                                    <section>
+                                        <div className={`rounded-[2rem] p-6 md:p-8 shadow-xl border ${darkMode ? 'bg-slate-800 border-slate-700 shadow-none' : 'bg-white border-white shadow-slate-200/50'}`}>
+                                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-blue-800">add_circle</span> Nuevo Aviso Global
+                                            </h3>
+                                            <form onSubmit={handlePostAnnouncement} className="space-y-4">
+                                                <input
+                                                    type="text"
+                                                    value={announcement.titulo}
+                                                    onChange={(e) => setAnnouncement({ ...announcement, titulo: e.target.value })}
+                                                    placeholder="¿Qué quieres anunciar hoy?"
+                                                    className={`w-full text-lg border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-800/20 transition-all ${darkMode ? 'bg-slate-900 text-white placeholder-slate-500' : 'bg-slate-50'}`}
+                                                    required
+                                                />
+                                                <textarea
+                                                    value={announcement.contenido}
+                                                    onChange={(e) => setAnnouncement({ ...announcement, contenido: e.target.value })}
+                                                    placeholder="Describe el aviso detalladamente..."
+                                                    rows="3"
+                                                    className={`w-full border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-800/20 transition-all ${darkMode ? 'bg-slate-900 text-white placeholder-slate-500' : 'bg-slate-50'}`}
+                                                    required
+                                                />
+                                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                                        <label className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors w-full sm:w-auto ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                            <span className="material-symbols-outlined text-xl">image</span>
+                                                            <span className="text-sm font-semibold">Imagen/Video</span>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*,video/*"
+                                                                onChange={(e) => setMediaFile(e.target.files[0])}
+                                                                className="hidden"
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                    <button
+                                                        type="submit"
+                                                        disabled={uploading}
+                                                        className="w-full sm:w-auto px-8 py-3 bg-blue-800 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                                                    >
+                                                        {uploading ? 'Subiendo...' : (editingPost ? 'Actualizar' : 'Publicar Ahora')}
+                                                    </button>
+                                                </div>
+                                                {mediaFile && (
+                                                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        📎 {mediaFile.name}
+                                                    </p>
+                                                )}
+                                            </form>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-lg font-bold">Avisos Activos</h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {posts.length === 0 ? (
+                                                <div className={`p-8 rounded-3xl text-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} border`}>
+                                                    <span className="material-symbols-outlined text-4xl text-slate-400 mb-2">notifications_off</span>
+                                                    <p className="text-slate-500">No hay avisos publicados.</p>
+                                                </div>
+                                            ) : (
+                                                posts.map(post => (
+                                                    <div key={post.id} className={`p-5 rounded-3xl border shadow-sm flex flex-col md:flex-row gap-5 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                                        {post.media_url && (
+                                                            <div className={`w-full md:w-48 h-32 flex-shrink-0 rounded-2xl overflow-hidden ${darkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+                                                                {post.media_type === 'video' ? (
+                                                                    <video src={post.media_url} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <img src={post.media_url} alt="Announcement" className="w-full h-full object-cover" />
+                                                                )}
+                                                            </div>
                                                         )}
+                                                        <div className="flex-1 flex flex-col justify-between">
+                                                            <div>
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <h4 className="font-bold text-lg leading-tight">{post.titulo}</h4>
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => handleEditPost(post)}
+                                                                            className={`p-1.5 transition-colors ${darkMode ? 'text-slate-400 hover:text-blue-400' : 'text-slate-400 hover:text-blue-800'}`}
+                                                                        >
+                                                                            <span className="material-symbols-outlined text-xl">edit</span>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeletePost(post.id)}
+                                                                            className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                                                                        >
+                                                                            <span className="material-symbols-outlined text-xl">delete</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <p className={`text-sm line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{post.contenido}</p>
+                                                            </div>
+                                                            <div className="mt-4 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-400">
+                                                                <span className="flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-sm">schedule</span>
+                                                                    {new Date(post.created_at).toLocaleDateString()}
+                                                                </span>
+                                                                <span className={`px-2.5 py-1 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-800'}`}>Académico</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+
+                            {activeNav === 'maestros' && (
+                                <>
+                                    <section>
+                                        <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-blue-800">co_present</span> Configuración Portal Docente
+                                            </h3>
+                                            <form onSubmit={handleSaveTeachersConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título"
+                                                    value={teachersConfigForm.title}
+                                                    onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, title: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Subtítulo"
+                                                    value={teachersConfigForm.subtitle}
+                                                    onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, subtitle: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="URL de imagen principal"
+                                                    value={teachersConfigForm.hero_image_url}
+                                                    onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, hero_image_url: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Texto del botón"
+                                                    value={teachersConfigForm.cta_label}
+                                                    onChange={(e) => setTeachersConfigForm({ ...teachersConfigForm, cta_label: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <div className="md:col-span-2">
+                                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">Guardar Configuración</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`}>
+                                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-blue-800">link</span> Recursos Docentes
+                                            </h3>
+                                            <form onSubmit={handleSaveTeacherLink} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Nombre"
+                                                    value={teacherLinkForm.name}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, name: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="url"
+                                                    placeholder="URL"
+                                                    value={teacherLinkForm.url}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, url: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Descripción"
+                                                    value={teacherLinkForm.description}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, description: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Icono (emoji)"
+                                                    value={teacherLinkForm.icon}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, icon: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Color (hex o nombre)"
+                                                    value={teacherLinkForm.color}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, color: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Orden (opcional)"
+                                                    value={teacherLinkForm.order_index}
+                                                    onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, order_index: e.target.value })}
+                                                    className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                                <label className="flex items-center gap-2 text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={teacherLinkForm.is_active}
+                                                        onChange={(e) => setTeacherLinkForm({ ...teacherLinkForm, is_active: e.target.checked })}
+                                                    />
+                                                    Visible en el portal
+                                                </label>
+                                                <div className="md:col-span-2">
+                                                    <button type="submit" className="px-6 py-3 bg-blue-800 text-white font-bold rounded-xl">
+                                                        {editingTeacherLink ? 'Actualizar' : 'Agregar'}
+                                                    </button>
+                                                </div>
+                                            </form>
+
+                                            <div className="mt-6 space-y-3">
+                                                {teacherLinks.map((item) => (
+                                                    <div key={item.id} className={`p-4 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                                        <div>
+                                                            <div className="font-semibold flex items-center gap-2">
+                                                                <span>{item.icon || '🔗'}</span>
+                                                                <span>{item.name}</span>
+                                                                {!item.is_active && <span className="text-xs text-slate-500">(oculto)</span>}
+                                                            </div>
+                                                            <div className="text-sm text-slate-500">{item.description}</div>
+                                                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500">{item.url}</a>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingTeacherLink(item);
+                                                                    setTeacherLinkForm({
+                                                                        name: item.name || '',
+                                                                        description: item.description || '',
+                                                                        icon: item.icon || '',
+                                                                        url: item.url || '',
+                                                                        color: item.color || '',
+                                                                        order_index: item.order_index || '',
+                                                                        is_active: item.is_active !== false
+                                                                    });
+                                                                }}
+                                                                className="text-blue-500"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                            <button onClick={() => handleDeleteTeacherLink(item.id)} className="text-red-500">Eliminar</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+
+                            {activeNav === 'clubes' && (
+                                <section>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold">Clubes Escolares</h3>
+                                        <button
+                                            onClick={() => { setClubToEdit(null); setShowClubModal(true); }}
+                                            className={`p-1.5 rounded-lg ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">add</span>
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {clubs.length === 0 ? (
+                                            <p className="text-center text-slate-500 py-4">No hay clubes registrados.</p>
+                                        ) : (
+                                            clubs.map(club => (
+                                                <div
+                                                    key={club.id}
+                                                    className={`flex items-center gap-4 p-4 rounded-2xl border shadow-sm ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}
+                                                >
+                                                    <div className={`w-12 h-12 flex-shrink-0 text-2xl flex items-center justify-center rounded-xl ${darkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
+                                                        {club.icono || '🎯'}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold">{career.nombre}</h4>
-                                                        <p className={`text-xs uppercase font-bold tracking-tighter ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                            {career.descripcion?.substring(0, 30) || 'Sin descripción'}
-                                                        </p>
+                                                        <h4 className="font-bold text-sm">{club.nombre}</h4>
+                                                        <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{club.categoria}</p>
                                                     </div>
                                                     <div className="flex gap-1">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); handleEditCareer(career); }}
+                                                            onClick={() => handleEditClub(club)}
                                                             className="p-1 text-slate-400 hover:text-blue-500"
                                                         >
                                                             <span className="material-symbols-outlined text-lg">edit</span>
                                                         </button>
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); handleDeleteCareer(career.id); }}
+                                                            onClick={() => handleDeleteClub(club.id)}
                                                             className="p-1 text-slate-400 hover:text-red-500"
                                                         >
                                                             <span className="material-symbols-outlined text-lg">delete</span>
                                                         </button>
                                                     </div>
                                                 </div>
-                                                {career.plan_estudios_url && (
-                                                    <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-slate-700' : 'border-slate-50'}`}>
-                                                        <a
-                                                            href={career.plan_estudios_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className={`text-xs font-bold ${darkMode ? 'text-blue-400' : 'text-blue-800'}`}
-                                                        >
-                                                            Ver Plan de Estudios
-                                                        </a>
-                                                        <span className="material-symbols-outlined text-blue-800 text-lg">arrow_forward</span>
+                                            ))
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeNav === 'carreras' && (
+                                <section>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold">Carreras Técnicas</h3>
+                                        <button
+                                            onClick={() => { setCareerToEdit(null); setShowCareerModal(true); }}
+                                            className={`p-1.5 rounded-lg ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">add</span>
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {careers.length === 0 ? (
+                                            <p className="text-center text-slate-500 py-4">No hay carreras registradas.</p>
+                                        ) : (
+                                            careers.map(career => (
+                                                <div
+                                                    key={career.id}
+                                                    className={`p-5 rounded-3xl border shadow-sm group cursor-pointer transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 hover:border-blue-400' : 'bg-white border-slate-100 hover:border-blue-800'}`}
+                                                >
+                                                    <div className="flex items-start gap-4 mb-4">
+                                                        <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center overflow-hidden">
+                                                            {career.imagen_url ? (
+                                                                <img src={career.imagen_url} alt={career.nombre} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span className="text-white text-2xl">📚</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="font-bold">{career.nombre}</h4>
+                                                            <p className={`text-xs uppercase font-bold tracking-tighter ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                {career.descripcion?.substring(0, 30) || 'Sin descripción'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleEditCareer(career); }}
+                                                                className="p-1 text-slate-400 hover:text-blue-500"
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">edit</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteCareer(career.id); }}
+                                                                className="p-1 text-slate-400 hover:text-red-500"
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">delete</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {career.plan_estudios_url && (
+                                                        <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-slate-700' : 'border-slate-50'}`}>
+                                                            <a
+                                                                href={career.plan_estudios_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`text-xs font-bold ${darkMode ? 'text-blue-400' : 'text-blue-800'}`}
+                                                            >
+                                                                Ver Plan de Estudios
+                                                            </a>
+                                                            <span className="material-symbols-outlined text-blue-800 text-lg">arrow_forward</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeNav === 'chatbot' && (
+                                <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-blue-800">smart_toy</span> IA Chatbot
+                                        </h3>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                            {chatbotForm.enabled ? 'Activo' : 'Desactivado'}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                            <p className="text-sm font-semibold">Estado</p>
+                                            <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {chatbotConfig ? 'Configurado' : 'Sin configurar'}
+                                            </p>
+                                        </div>
+                                        <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                            <p className="text-sm font-semibold">Proveedor</p>
+                                            <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {(chatbotForm.provider || 'grok').toUpperCase()}
+                                            </p>
+                                        </div>
+                                        <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                            <p className="text-sm font-semibold">Modelo</p>
+                                            <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {chatbotForm.model || 'No definido'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={handleSaveChatbotConfig} className="mt-6 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-sm font-semibold">Proveedor</label>
+                                                <select
+                                                    value={chatbotForm.provider}
+                                                    onChange={(e) => setChatbotForm({ ...chatbotForm, provider: e.target.value })}
+                                                    className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                >
+                                                    <option value="groq">Groq</option>
+                                                    <option value="gemini">Gemini</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-semibold">API Key</label>
+                                                <input
+                                                    type="password"
+                                                    value={chatbotForm.api_key}
+                                                    onChange={(e) => setChatbotForm({ ...chatbotForm, api_key: e.target.value })}
+                                                    placeholder="Ingresa tu API Key"
+                                                    className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-semibold">Modelo</label>
+                                                <select
+                                                    value={chatbotForm.model}
+                                                    onChange={(e) => setChatbotForm({ ...chatbotForm, model: e.target.value })}
+                                                    className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                >
+                                                    <option value="">Selecciona un modelo</option>
+                                                    {aiModels
+                                                        .filter((model) => model.provider === chatbotForm.provider && model.is_active !== false)
+                                                        .map((model) => (
+                                                            <option key={model.id} value={model.name}>{model.name}</option>
+                                                        ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-sm font-semibold">Prompt de sistema</label>
+                                            <textarea
+                                                value={chatbotForm.system_prompt}
+                                                onChange={(e) => setChatbotForm({ ...chatbotForm, system_prompt: e.target.value })}
+                                                rows="6"
+                                                placeholder="Instrucciones del sistema para el chatbot"
+                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={chatbotForm.enable_db_context}
+                                                    onChange={(e) => setChatbotForm({ ...chatbotForm, enable_db_context: e.target.checked })}
+                                                />
+                                                Permitir contexto de la base de datos
+                                            </label>
+                                            <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={chatbotForm.enabled}
+                                                    onChange={(e) => setChatbotForm({ ...chatbotForm, enabled: e.target.checked })}
+                                                />
+                                                Activar chatbot en el sitio
+                                            </label>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                type="submit"
+                                                disabled={chatbotSaving}
+                                                className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow hover:scale-[1.01] transition-all disabled:opacity-60"
+                                            >
+                                                {chatbotSaving ? 'Guardando...' : 'Guardar configuración'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => window.open('/', '_blank')}
+                                                className={`px-5 py-3 rounded-2xl font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                            >
+                                                Ver en sitio
+                                            </button>
+                                        </div>
+
+                                        <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            La información de la base de datos se agrega como contexto al prompt. Evita incluir datos sensibles.
+                                        </p>
+                                    </form>
+
+                                    <div className="mt-8">
+                                        <h4 className="text-md font-bold mb-3">Probar chatbot</h4>
+                                        <form onSubmit={runChatbotTest} className="space-y-3">
+                                            <textarea
+                                                value={chatbotTestInput}
+                                                onChange={(e) => setChatbotTestInput(e.target.value)}
+                                                rows="3"
+                                                placeholder="Escribe un mensaje de prueba..."
+                                                className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={chatbotTestLoading}
+                                                className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow disabled:opacity-60"
+                                            >
+                                                {chatbotTestLoading ? 'Probando...' : 'Probar ahora'}
+                                            </button>
+                                        </form>
+                                        {chatbotTestResponse && (
+                                            <div className={`mt-4 p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-100 text-slate-600'}`}>
+                                                <p className="text-sm whitespace-pre-wrap">{chatbotTestResponse}</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-8">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const next = !chatbotQuestionsOpen;
+                                                setChatbotQuestionsOpen(next);
+                                                if (next) fetchChatbotQuestions();
+                                            }}
+                                            className={`px-5 py-3 rounded-2xl text-sm font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                        >
+                                            {chatbotQuestionsOpen ? 'Ocultar preguntas realizadas' : 'Preguntas realizadas por usuarios'}
+                                        </button>
+
+                                        {chatbotQuestionsOpen && (
+                                            <div className="mt-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-md font-bold">Preguntas recientes</h4>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleClearChatbotQuestions}
+                                                        className="text-sm text-red-500"
+                                                    >
+                                                        Eliminar todas
+                                                    </button>
+                                                </div>
+                                                {chatbotQuestionsLoading ? (
+                                                    <p className="text-sm text-slate-500">Cargando...</p>
+                                                ) : chatbotQuestions.length === 0 ? (
+                                                    <p className="text-sm text-slate-500">No hay preguntas registradas.</p>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {chatbotQuestions.map((q) => (
+                                                            <div
+                                                                key={q.id}
+                                                                className={`p-4 rounded-2xl border flex items-start justify-between gap-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}
+                                                            >
+                                                                <div>
+                                                                    <p className={`text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{q.question_text}</p>
+                                                                    <p className="text-xs text-slate-400 mt-1">
+                                                                        {new Date(q.created_at).toLocaleString()} · Ruta: {q.source_page || 'N/D'}
+                                                                    </p>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDeleteChatbotQuestion(q.id)}
+                                                                    className="text-sm text-red-500"
+                                                                >
+                                                                    Eliminar
+                                                                </button>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            </section>
-                        )}
-
-                        {activeNav === 'chatbot' && (
-                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-blue-800">smart_toy</span> IA Chatbot
-                                    </h3>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                                        {chatbotForm.enabled ? 'Activo' : 'Desactivado'}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                        <p className="text-sm font-semibold">Estado</p>
-                                        <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {chatbotConfig ? 'Configurado' : 'Sin configurar'}
-                                        </p>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                        <p className="text-sm font-semibold">Proveedor</p>
-                                        <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {(chatbotForm.provider || 'grok').toUpperCase()}
-                                        </p>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                        <p className="text-sm font-semibold">Modelo</p>
-                                        <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {chatbotForm.model || 'No definido'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <form onSubmit={handleSaveChatbotConfig} className="mt-6 space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-sm font-semibold">Proveedor</label>
-                                            <select
-                                                value={chatbotForm.provider}
-                                                onChange={(e) => setChatbotForm({ ...chatbotForm, provider: e.target.value })}
-                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            >
-                                                <option value="groq">Groq</option>
-                                                <option value="gemini">Gemini</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-semibold">API Key</label>
-                                            <input
-                                                type="password"
-                                                value={chatbotForm.api_key}
-                                                onChange={(e) => setChatbotForm({ ...chatbotForm, api_key: e.target.value })}
-                                                placeholder="Ingresa tu API Key"
-                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-semibold">Modelo</label>
-                                            <select
-                                                value={chatbotForm.model}
-                                                onChange={(e) => setChatbotForm({ ...chatbotForm, model: e.target.value })}
-                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                            >
-                                                <option value="">Selecciona un modelo</option>
-                                                {aiModels
-                                                    .filter((model) => model.provider === chatbotForm.provider && model.is_active !== false)
-                                                    .map((model) => (
-                                                        <option key={model.id} value={model.name}>{model.name}</option>
-                                                    ))}
-                                            </select>
-                                        </div>
+                                        )}
                                     </div>
 
-                                    <div>
-                                        <label className="text-sm font-semibold">Prompt de sistema</label>
-                                        <textarea
-                                            value={chatbotForm.system_prompt}
-                                            onChange={(e) => setChatbotForm({ ...chatbotForm, system_prompt: e.target.value })}
-                                            rows="6"
-                                            placeholder="Instrucciones del sistema para el chatbot"
-                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={chatbotForm.enable_db_context}
-                                                onChange={(e) => setChatbotForm({ ...chatbotForm, enable_db_context: e.target.checked })}
-                                            />
-                                            Permitir contexto de la base de datos
-                                        </label>
-                                        <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={chatbotForm.enabled}
-                                                onChange={(e) => setChatbotForm({ ...chatbotForm, enabled: e.target.checked })}
-                                            />
-                                            Activar chatbot en el sitio
-                                        </label>
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <button
-                                            type="submit"
-                                            disabled={chatbotSaving}
-                                            className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow hover:scale-[1.01] transition-all disabled:opacity-60"
-                                        >
-                                            {chatbotSaving ? 'Guardando...' : 'Guardar configuración'}
-                                        </button>
+                                    <div className="mt-8">
                                         <button
                                             type="button"
-                                            onClick={() => window.open('/', '_blank')}
-                                            className={`px-5 py-3 rounded-2xl font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                            onClick={() => setShowAdvancedChatbotConfig(!showAdvancedChatbotConfig)}
+                                            className={`px-5 py-3 rounded-2xl text-sm font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                                         >
-                                            Ver en sitio
+                                            {showAdvancedChatbotConfig ? 'Ocultar más configuraciones' : 'Más configuraciones'}
                                         </button>
-                                    </div>
 
-                                    <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        La información de la base de datos se agrega como contexto al prompt. Evita incluir datos sensibles.
-                                    </p>
-                                </form>
+                                        {showAdvancedChatbotConfig && (
+                                            <div className="mt-4 space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-sm font-semibold">Base URL (opcional)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={chatbotForm.base_url}
+                                                            onChange={(e) => setChatbotForm({ ...chatbotForm, base_url: e.target.value })}
+                                                            placeholder="https://api.groq.com/openai/v1"
+                                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                <div className="mt-8">
-                                    <h4 className="text-md font-bold mb-3">Probar chatbot</h4>
-                                    <form onSubmit={runChatbotTest} className="space-y-3">
-                                        <textarea
-                                            value={chatbotTestInput}
-                                            onChange={(e) => setChatbotTestInput(e.target.value)}
-                                            rows="3"
-                                            placeholder="Escribe un mensaje de prueba..."
-                                            className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={chatbotTestLoading}
-                                            className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow disabled:opacity-60"
-                                        >
-                                            {chatbotTestLoading ? 'Probando...' : 'Probar ahora'}
-                                        </button>
-                                    </form>
-                                    {chatbotTestResponse && (
-                                        <div className={`mt-4 p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-100 text-slate-600'}`}>
-                                            <p className="text-sm whitespace-pre-wrap">{chatbotTestResponse}</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-8">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const next = !chatbotQuestionsOpen;
-                                            setChatbotQuestionsOpen(next);
-                                            if (next) fetchChatbotQuestions();
-                                        }}
-                                        className={`px-5 py-3 rounded-2xl text-sm font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                                    >
-                                        {chatbotQuestionsOpen ? 'Ocultar preguntas realizadas' : 'Preguntas realizadas por usuarios'}
-                                    </button>
-
-                                    {chatbotQuestionsOpen && (
-                                        <div className="mt-4 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="text-md font-bold">Preguntas recientes</h4>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleClearChatbotQuestions}
-                                                    className="text-sm text-red-500"
-                                                >
-                                                    Eliminar todas
-                                                </button>
-                                            </div>
-                                            {chatbotQuestionsLoading ? (
-                                                <p className="text-sm text-slate-500">Cargando...</p>
-                                            ) : chatbotQuestions.length === 0 ? (
-                                                <p className="text-sm text-slate-500">No hay preguntas registradas.</p>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    {chatbotQuestions.map((q) => (
-                                                        <div
-                                                            key={q.id}
-                                                            className={`p-4 rounded-2xl border flex items-start justify-between gap-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}
+                                                <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                    <p className="text-sm font-semibold mb-3">Configuración híbrida</p>
+                                                    <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={chatbotForm.fallback_enabled}
+                                                            onChange={(e) => setChatbotForm({ ...chatbotForm, fallback_enabled: e.target.checked })}
+                                                        />
+                                                        Usar segunda API si la principal falla
+                                                    </label>
+                                                    <div className="mt-3">
+                                                        <label className="text-sm font-semibold">Proveedor principal</label>
+                                                        <select
+                                                            value={chatbotForm.primary_provider}
+                                                            onChange={(e) => setChatbotForm({ ...chatbotForm, primary_provider: e.target.value })}
+                                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
                                                         >
-                                                            <div>
-                                                                <p className={`text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{q.question_text}</p>
-                                                                <p className="text-xs text-slate-400 mt-1">
-                                                                    {new Date(q.created_at).toLocaleString()} · Ruta: {q.source_page || 'N/D'}
-                                                                </p>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleDeleteChatbotQuestion(q.id)}
-                                                                className="text-sm text-red-500"
-                                                            >
-                                                                Eliminar
-                                                            </button>
-                                                        </div>
-                                                    ))}
+                                                            <option value="groq">Groq</option>
+                                                            <option value="gemini">Gemini</option>
+                                                        </select>
+                                                        <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                            La secundaria será la otra API.
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div className="mt-8">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAdvancedChatbotConfig(!showAdvancedChatbotConfig)}
-                                        className={`px-5 py-3 rounded-2xl text-sm font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                                    >
-                                        {showAdvancedChatbotConfig ? 'Ocultar más configuraciones' : 'Más configuraciones'}
-                                    </button>
-
-                                    {showAdvancedChatbotConfig && (
-                                        <div className="mt-4 space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-sm font-semibold">Base URL (opcional)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={chatbotForm.base_url}
-                                                        onChange={(e) => setChatbotForm({ ...chatbotForm, base_url: e.target.value })}
-                                                        placeholder="https://api.groq.com/openai/v1"
-                                                        className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                                    />
+                                                <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                    <p className="text-sm font-semibold mb-3">Agregar modelo</p>
+                                                    <form onSubmit={handleAddAiModel} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                        <select
+                                                            value={aiModelForm.provider}
+                                                            onChange={(e) => setAiModelForm({ ...aiModelForm, provider: e.target.value })}
+                                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                                        >
+                                                            <option value="groq">Groq</option>
+                                                            <option value="gemini">Gemini</option>
+                                                        </select>
+                                                        <input
+                                                            type="text"
+                                                            value={aiModelForm.name}
+                                                            onChange={(e) => setAiModelForm({ ...aiModelForm, name: e.target.value })}
+                                                            placeholder="llama-3.1-70b, gemini-3.0-flash"
+                                                            className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                                        />
+                                                        <button
+                                                            type="submit"
+                                                            className="px-4 py-3 rounded-xl bg-blue-800 text-white font-bold"
+                                                        >
+                                                            Agregar modelo
+                                                        </button>
+                                                    </form>
                                                 </div>
                                             </div>
-
-                                            <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                                <p className="text-sm font-semibold mb-3">Configuración híbrida</p>
-                                                <label className={`flex items-center gap-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={chatbotForm.fallback_enabled}
-                                                        onChange={(e) => setChatbotForm({ ...chatbotForm, fallback_enabled: e.target.checked })}
-                                                    />
-                                                    Usar segunda API si la principal falla
-                                                </label>
-                                                <div className="mt-3">
-                                                    <label className="text-sm font-semibold">Proveedor principal</label>
-                                                    <select
-                                                        value={chatbotForm.primary_provider}
-                                                        onChange={(e) => setChatbotForm({ ...chatbotForm, primary_provider: e.target.value })}
-                                                        className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                                    >
-                                                        <option value="groq">Groq</option>
-                                                        <option value="gemini">Gemini</option>
-                                                    </select>
-                                                    <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                        La secundaria será la otra API.
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                                <p className="text-sm font-semibold mb-3">Agregar modelo</p>
-                                                <form onSubmit={handleAddAiModel} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    <select
-                                                        value={aiModelForm.provider}
-                                                        onChange={(e) => setAiModelForm({ ...aiModelForm, provider: e.target.value })}
-                                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                                    >
-                                                        <option value="groq">Groq</option>
-                                                        <option value="gemini">Gemini</option>
-                                                    </select>
-                                                    <input
-                                                        type="text"
-                                                        value={aiModelForm.name}
-                                                        onChange={(e) => setAiModelForm({ ...aiModelForm, name: e.target.value })}
-                                                        placeholder="llama-3.1-70b, gemini-3.0-flash"
-                                                        className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                                    />
-                                                    <button
-                                                        type="submit"
-                                                        className="px-4 py-3 rounded-xl bg-blue-800 text-white font-bold"
-                                                    >
-                                                        Agregar modelo
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                            </section>
-                        )}
-
-                        {activeNav === 'gmail' && (
-                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-blue-800">mail</span> Notificaciones Gmail
-                                    </h3>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${gmailConnected
-                                        ? (darkMode ? 'bg-emerald-900 text-emerald-300' : 'bg-emerald-100 text-emerald-700')
-                                        : (darkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-700')
-                                        }`}>
-                                        {gmailChecking ? 'Verificando...' : (gmailConnected ? `✓ ${gmailEmail || 'Conectado'}` : 'No conectado')}
-                                    </span>
-                                </div>
-
-                                {/* Info box */}
-                                <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
-                                    <p className="text-sm font-semibold mb-2">📧 Envía correos usando tu cuenta de Google</p>
-                                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {gmailConnected
-                                            ? 'Gmail está conectado. Puedes enviar correos a los alumnos por grado/grupo.'
-                                            : 'Para usar Gmail, cierra sesión e inicia sesión nuevamente con Google. El sistema pedirá permiso para enviar correos en tu nombre.'}
-                                    </p>
-                                </div>
-
-                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-semibold">Asunto</label>
-                                        <input
-                                            type="text"
-                                            value={gmailForm.subject}
-                                            onChange={(e) => setGmailForm({ ...gmailForm, subject: e.target.value })}
-                                            placeholder="Aviso importante"
-                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
+                                        )}
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-semibold">Enviar a todos</label>
-                                        <div className={`mt-2 p-3 rounded-xl border flex items-center gap-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+
+                                </section>
+                            )}
+
+                            {activeNav === 'gmail' && (
+                                <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-blue-800">mail</span> Notificaciones Gmail
+                                        </h3>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${gmailConnected
+                                            ? (darkMode ? 'bg-emerald-900 text-emerald-300' : 'bg-emerald-100 text-emerald-700')
+                                            : (darkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-700')
+                                            }`}>
+                                            {gmailChecking ? 'Verificando...' : (gmailConnected ? `✓ ${gmailEmail || 'Conectado'}` : 'No conectado')}
+                                        </span>
+                                    </div>
+
+                                    {/* Info box */}
+                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
+                                        <p className="text-sm font-semibold mb-2">📧 Envía correos usando tu cuenta de Google</p>
+                                        <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            {gmailConnected
+                                                ? 'Gmail está conectado. Puedes enviar correos a los alumnos por grado/grupo.'
+                                                : 'Para usar Gmail, cierra sesión e inicia sesión nuevamente con Google. El sistema pedirá permiso para enviar correos en tu nombre.'}
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-semibold">Asunto</label>
                                             <input
-                                                type="checkbox"
-                                                checked={gmailForm.sendToAll}
-                                                onChange={(e) => setGmailForm({ ...gmailForm, sendToAll: e.target.checked })}
+                                                type="text"
+                                                value={gmailForm.subject}
+                                                onChange={(e) => setGmailForm({ ...gmailForm, subject: e.target.value })}
+                                                placeholder="Aviso importante"
+                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                             />
-                                            <span className="text-sm">Ignorar filtros por grado/grupo</span>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-semibold">Enviar a todos</label>
+                                            <div className={`mt-2 p-3 rounded-xl border flex items-center gap-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={gmailForm.sendToAll}
+                                                    onChange={(e) => setGmailForm({ ...gmailForm, sendToAll: e.target.checked })}
+                                                />
+                                                <span className="text-sm">Ignorar filtros por grado/grupo</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-semibold">Contenido (HTML)</label>
-                                        <textarea
-                                            value={gmailForm.messageHtml}
-                                            onChange={(e) => setGmailForm({ ...gmailForm, messageHtml: e.target.value })}
-                                            rows="6"
-                                            placeholder="<b>Hola</b> estudiantes..."
-                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-semibold">Contenido (texto plano)</label>
-                                        <textarea
-                                            value={gmailForm.messageText}
-                                            onChange={(e) => setGmailForm({ ...gmailForm, messageText: e.target.value })}
-                                            rows="6"
-                                            placeholder="Hola estudiantes..."
-                                            className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                        <p className="text-sm font-semibold mb-3">Grados</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[1, 2, 3, 4, 5, 6].map((grade) => (
-                                                <button
-                                                    key={grade}
-                                                    type="button"
-                                                    onClick={() => toggleGmailGrade(grade)}
-                                                    className={`px-3 py-2 rounded-xl text-sm font-semibold border ${gmailForm.grados.includes(grade)
-                                                        ? (darkMode ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-800 text-white border-blue-800')
-                                                        : (darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-50 text-slate-600 border-slate-200')
-                                                        }`}
-                                                >
-                                                    {grade}°
-                                                </button>
-                                            ))}
+                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-semibold">Contenido (HTML)</label>
+                                            <textarea
+                                                value={gmailForm.messageHtml}
+                                                onChange={(e) => setGmailForm({ ...gmailForm, messageHtml: e.target.value })}
+                                                rows="6"
+                                                placeholder="<b>Hola</b> estudiantes..."
+                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-semibold">Contenido (texto plano)</label>
+                                            <textarea
+                                                value={gmailForm.messageText}
+                                                onChange={(e) => setGmailForm({ ...gmailForm, messageText: e.target.value })}
+                                                rows="6"
+                                                placeholder="Hola estudiantes..."
+                                                className={`w-full mt-2 p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                            />
                                         </div>
                                     </div>
-                                    <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
-                                        <p className="text-sm font-semibold mb-3">Grupos</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(() => {
-                                                const defaults = ['A', 'B', 'C', 'D', 'F'];
-                                                const fromStudents = Array.from(new Set(students.map((s) => s.grupo).filter(Boolean))).sort();
-                                                const groups = fromStudents.length ? fromStudents : defaults;
-                                                return groups.map((group) => (
+
+                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                            <p className="text-sm font-semibold mb-3">Grados</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {[1, 2, 3, 4, 5, 6].map((grade) => (
                                                     <button
-                                                        key={group}
+                                                        key={grade}
                                                         type="button"
-                                                        onClick={() => toggleGmailGroup(group)}
-                                                        className={`px-3 py-2 rounded-xl text-sm font-semibold border ${gmailForm.grupos.includes(group)
-                                                            ? (darkMode ? 'bg-green-600 text-white border-green-600' : 'bg-green-600 text-white border-green-600')
+                                                        onClick={() => toggleGmailGrade(grade)}
+                                                        className={`px-3 py-2 rounded-xl text-sm font-semibold border ${gmailForm.grados.includes(grade)
+                                                            ? (darkMode ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-800 text-white border-blue-800')
                                                             : (darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-50 text-slate-600 border-slate-200')
                                                             }`}
                                                     >
-                                                        {group}
+                                                        {grade}°
                                                     </button>
-                                                ));
-                                            })()}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {gmailStatus && (
-                                    <div className={`mt-4 p-4 rounded-2xl border ${gmailStatus.type === 'success'
-                                        ? (darkMode ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800')
-                                        : (darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border-red-200 text-red-700')
-                                        }`}>
-                                        {gmailStatus.message}
-                                    </div>
-                                )}
-
-                                <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                                    {!gmailConnected && (
-                                        <button
-                                            type="button"
-                                            onClick={refreshGmailCredentials}
-                                            className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow hover:scale-[1.01] transition-all"
-                                        >
-                                            🔐 Conectar Gmail
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={checkGmailStatus}
-                                        disabled={gmailChecking}
-                                        className={`px-5 py-3 rounded-2xl font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                                    >
-                                        {gmailChecking ? 'Verificando...' : '🔄 Verificar conexión'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={sendGmailNotifications}
-                                        disabled={gmailSending || !gmailConnected}
-                                        className={`px-5 py-3 rounded-2xl font-bold ${gmailSending || !gmailConnected
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:scale-[1.01]'
-                                            } ${gmailConnected ? 'bg-green-600 text-white' : (darkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
-                                    >
-                                        {gmailSending ? '📨 Enviando...' : '📧 Enviar correo'}
-                                    </button>
-                                </div>
-                            </section>
-                        )}
-
-                        {activeNav === 'storage' && (
-                            <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-blue-800">storage</span> Almacenamiento
-                                    </h3>
-                                    <button
-                                        type="button"
-                                        onClick={fetchStorageUsage}
-                                        className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}
-                                    >
-                                        Actualizar
-                                    </button>
-                                </div>
-
-                                {storageLoading ? (
-                                    <p className="text-sm text-slate-500">Cargando...</p>
-                                ) : storageUsage ? (
-                                    <>
-                                        <div className={`w-full h-5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                                            {(() => {
-                                                const total = storageUsage.total_bytes || 0;
-                                                const db = storageUsage.db_bytes || 0;
-                                                const storage = storageUsage.storage_bytes || 0;
-                                                const dbPct = total ? Math.round((db / total) * 100) : 0;
-                                                const storagePct = total ? 100 - dbPct : 0;
-                                                return (
-                                                    <div className="w-full h-full flex">
-                                                        <div style={{ width: `${dbPct}%` }} className="h-full bg-blue-600" />
-                                                        <div style={{ width: `${storagePct}%` }} className="h-full bg-green-500" />
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                        <div className="flex flex-wrap gap-4 text-sm mt-4">
-                                            <span className="flex items-center gap-2">
-                                                <span className="w-3 h-3 rounded-full bg-blue-600" />
-                                                BD: {formatBytes(storageUsage.db_bytes)}
-                                            </span>
-                                            <span className="flex items-center gap-2">
-                                                <span className="w-3 h-3 rounded-full bg-green-500" />
-                                                Storage: {formatBytes(storageUsage.storage_bytes)}
-                                            </span>
-                                            <span className="flex items-center gap-2">
-                                                Total: {formatBytes(storageUsage.total_bytes)}
-                                            </span>
-                                        </div>
-
-                                        {storageUsage.buckets?.length > 0 && (
-                                            <div className="space-y-2 mt-4">
-                                                <h5 className="text-sm font-semibold">Buckets</h5>
-                                                {storageUsage.buckets.map((bucket) => (
-                                                    <div key={bucket.bucket_id} className={`p-3 rounded-xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-100 bg-white'}`}>
-                                                        <div className="flex items-center justify-between text-sm">
-                                                            <span>{bucket.bucket_id}</span>
-                                                            <span>{formatBytes(bucket.size_bytes)}</span>
-                                                        </div>
-                                                    </div>
                                                 ))}
                                             </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <p className="text-sm text-slate-500">Sin datos de almacenamiento.</p>
-                                )}
-                            </section>
-                        )}
-
-                        {activeNav === 'preregistros' && (
-                            <section className="space-y-6">
-                                <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                                        <div>
-                                            <h3 className="text-xl font-bold flex items-center gap-2 text-blue-600">
-                                                <span className="material-symbols-outlined">assignment_ind</span> Pre-Registros de Nuevo Ingreso
-                                            </h3>
-                                            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                Gestiona las solicitudes de aspirantes para el ciclo escolar 2025-2026.
-                                            </p>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={fetchPreregistros} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                                                <span className="material-symbols-outlined">refresh</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setShowPreregConfig(!showPreregConfig)}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showPreregConfig ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                            >
-                                                <span className="material-symbols-outlined">{showPreregConfig ? 'visibility' : 'settings'}</span>
-                                                <span className="font-bold">{showPreregConfig ? 'Ver Registros' : 'Configurar Módulo'}</span>
-                                            </button>
+                                        <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                            <p className="text-sm font-semibold mb-3">Grupos</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(() => {
+                                                    const defaults = ['A', 'B', 'C', 'D', 'F'];
+                                                    const fromStudents = Array.from(new Set(students.map((s) => s.grupo).filter(Boolean))).sort();
+                                                    const groups = fromStudents.length ? fromStudents : defaults;
+                                                    return groups.map((group) => (
+                                                        <button
+                                                            key={group}
+                                                            type="button"
+                                                            onClick={() => toggleGmailGroup(group)}
+                                                            className={`px-3 py-2 rounded-xl text-sm font-semibold border ${gmailForm.grupos.includes(group)
+                                                                ? (darkMode ? 'bg-green-600 text-white border-green-600' : 'bg-green-600 text-white border-green-600')
+                                                                : (darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-50 text-slate-600 border-slate-200')
+                                                                }`}
+                                                        >
+                                                            {group}
+                                                        </button>
+                                                    ));
+                                                })()}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {showPreregConfig ? (
-                                        <div className="space-y-6">
-                                            {/* ═══ ESTADO DEL MÓDULO ═══ */}
-                                            <div className={`p-5 rounded-3xl border ${preregConfig.habilitado ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${preregConfig.habilitado ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                                            <span className="material-symbols-outlined">{preregConfig.habilitado ? 'check_circle' : 'cancel'}</span>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-bold">Estatus del Módulo</h4>
-                                                            <p className="text-xs opacity-70">Si se desactiva, la landing muestra "Convocatoria Cerrada"</p>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => setPreregConfig({ ...preregConfig, habilitado: !preregConfig.habilitado })}
-                                                        className={`px-5 py-2 rounded-xl font-bold text-sm transition-all ${preregConfig.habilitado ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
-                                                    >
-                                                        {preregConfig.habilitado ? 'Desactivar' : 'Activar'}
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <form onSubmit={handleSavePreregistroConfig} className="space-y-6">
-
-                                                {/* ═══ HERO / ENCABEZADO ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-600 text-white rounded-lg">🏠 Hero / Encabezado</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge (insignia superior)</label>
-                                                            <input type="text" value={preregConfig.badge_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, badge_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📋 Convocatoria Abierta · Ciclo 2025–2026" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título principal</label>
-                                                            <input type="text" value={preregConfig.titulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, titulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
-                                                            <input type="text" value={preregConfig.subtitulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, subtitulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón CTA</label>
-                                                            <input type="text" value={preregConfig.cta_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Ahora!" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón CTA</label>
-                                                            <input type="text" value={preregConfig.cta_subtexto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_subtexto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Es rápido, gratuito y 100% en línea" />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ VIGENCIA / COUNTDOWN ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-orange-500 text-white rounded-lg">⏰ Vigencia</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Fecha de cierre</label>
-                                                            <input type="date" value={preregConfig.fecha_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, fecha_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del contador</label>
-                                                            <input type="text" value={preregConfig.mensaje_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, mensaje_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Cierre de convocatoria en:" />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ TARJETA PRINCIPAL ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-green-600 text-white rounded-lg">📋 Tarjeta Principal</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de la tarjeta</label>
-                                                            <input type="text" value={preregConfig.card_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Regístrate" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
-                                                            <input type="text" value={preregConfig.card_boton_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_boton_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Iniciar Pre-Registro →" />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
-                                                            <textarea value={preregConfig.card_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_descripcion: e.target.value })} rows={3} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Checklist (un ítem por línea)</label>
-                                                            <textarea
-                                                                value={Array.isArray(preregConfig.card_checklist_json) ? preregConfig.card_checklist_json.join('\n') : ''}
-                                                                onChange={(e) => setPreregConfig({ ...preregConfig, card_checklist_json: e.target.value.split('\n').filter(l => l.trim()) })}
-                                                                rows={5} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                                                placeholder="Datos personales y de contacto&#10;Elección de carrera técnica&#10;etc."
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ PASOS ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-purple-600 text-white rounded-lg">🔢 Sección Pasos</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                            <input type="text" value={preregConfig.pasos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Cómo funciona?" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                            <input type="text" value={preregConfig.pasos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-4 space-y-3">
-                                                        <label className="text-xs font-bold opacity-60 block">Pasos (agrega/edita)</label>
-                                                        {(preregConfig.pasos_json || []).map((paso, idx) => (
-                                                            <div key={idx} className={`p-3 rounded-xl border flex flex-col md:flex-row gap-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                <input type="text" value={paso.num} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], num: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`w-16 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="#" />
-                                                                <input type="text" value={paso.titulo} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], titulo: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Título del paso" />
-                                                                <input type="text" value={paso.desc} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], desc: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Descripción" />
-                                                                <button type="button" onClick={() => { const arr = preregConfig.pasos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
-                                                            </div>
-                                                        ))}
-                                                        <button type="button" onClick={() => setPreregConfig({ ...preregConfig, pasos_json: [...(preregConfig.pasos_json || []), { num: String((preregConfig.pasos_json?.length || 0) + 1).padStart(2, '0'), titulo: '', desc: '' }] })} className="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 font-bold text-sm hover:bg-purple-200 transition-colors">+ Agregar Paso</button>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ CARRERAS ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-cyan-600 text-white rounded-lg">🎓 Sección Carreras</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                            <input type="text" value={preregConfig.carreras_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Carreras Técnicas Disponibles" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                            <input type="text" value={preregConfig.carreras_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                    </div>
-                                                    <p className={`mt-3 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>💡 Las carreras se gestionan desde la sección "Carreras" del panel principal.</p>
-                                                </fieldset>
-
-                                                {/* ═══ REQUISITOS ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-amber-500 text-white rounded-lg">📋 Sección Requisitos</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
-                                                            <input type="text" value={preregConfig.requisitos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
-                                                            <input type="text" value={preregConfig.requisitos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-4 space-y-3">
-                                                        <label className="text-xs font-bold opacity-60 block">Requisitos (agrega/edita)</label>
-                                                        {(preregConfig.requisitos_json || []).map((req, idx) => (
-                                                            <div key={idx} className={`p-3 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                <input type="text" value={req.icon} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`w-14 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🪪" />
-                                                                <input type="text" value={req.txt} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], txt: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Texto del requisito" />
-                                                                <button type="button" onClick={() => { const arr = preregConfig.requisitos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
-                                                            </div>
-                                                        ))}
-                                                        <button type="button" onClick={() => setPreregConfig({ ...preregConfig, requisitos_json: [...(preregConfig.requisitos_json || []), { icon: '📌', txt: '' }] })} className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 font-bold text-sm hover:bg-amber-200 transition-colors">+ Agregar Requisito</button>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ CTA FINAL ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-lg">🚀 CTA Final</legend>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                            <input type="text" value={preregConfig.cta_final_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Listo para unirte al CBTa 134?" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
-                                                            <input type="text" value={preregConfig.cta_final_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
-                                                            <input type="text" value={preregConfig.cta_final_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Comenzar Pre-Registro" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón</label>
-                                                            <input type="text" value={preregConfig.cta_final_boton_sub || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton_sub: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Formulario en línea · Ficha PDF inmediata" />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ CONVOCATORIA CERRADA ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-red-50 bg-red-50/30'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-600 text-white rounded-lg">🚫 Página Cerrada</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el módulo está desactivado</p>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
-                                                            <input type="text" value={preregConfig.cerrada_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🚫 Convocatoria Cerrada" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                            <input type="text" value={preregConfig.cerrada_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="El proceso de pre-registro ha finalizado" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
-                                                            <textarea value={preregConfig.cerrada_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_mensaje: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ FORMULARIO ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white rounded-lg">📝 Formulario</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran en el formulario de pre-registro</p>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge del formulario</label>
-                                                            <input type="text" value={preregConfig.form_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Nuevo Ingreso 2025–2026" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título del formulario</label>
-                                                            <input type="text" value={preregConfig.form_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Registro de Aspirantes" />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo del formulario</label>
-                                                            <input type="text" value={preregConfig.form_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Indicaciones en la Ficha PDF</label>
-                                                            <input type="text" value={preregConfig.indicaciones_ficha || ''} onChange={(e) => setPreregConfig({ ...preregConfig, indicaciones_ficha: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Acude con tu ficha impresa en las fechas indicadas." />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ TARJETA PÁGINA PRINCIPAL ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-pink-600 text-white rounded-lg">🏠 Tarjeta en Página Principal</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>La tarjeta que aparece en la página de inicio cuando el módulo está activo</p>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
-                                                            <input type="text" value={preregConfig.home_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="NUEVO INGRESO 2025" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
-                                                            <input type="text" value={preregConfig.home_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📝" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                            <input type="text" value={preregConfig.home_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Hoy!" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del Botón</label>
-                                                            <input type="text" value={preregConfig.home_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Pre-Registro →" />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
-                                                            <textarea value={preregConfig.home_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_descripcion: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ TÍTULOS DE SECCIONES DEL FORMULARIO ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-violet-600 text-white rounded-lg">📑 Títulos de Pasos del Formulario</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los títulos y emojis de cada sección del formulario. Puedes incluir emojis al inicio.</p>
-                                                    <div className="space-y-3">
-                                                        {[
-                                                            { key: 'form_titulo_paso1', label: 'Paso 1 – Título', ph: '👤 Datos del Aspirante' },
-                                                            { key: 'form_titulo_paso2', label: 'Paso 2 – Título', ph: '🎓 Carrera Técnica' },
-                                                            { key: 'form_desc_paso2', label: 'Paso 2 – Descripción', ph: 'Selecciona la carrera...' },
-                                                            { key: 'form_titulo_paso3', label: 'Paso 3 – Título', ph: '🏫 Escuela de Procedencia' },
-                                                            { key: 'form_desc_paso3', label: 'Paso 3 – Descripción', ph: 'Proporciona los datos...' },
-                                                            { key: 'form_titulo_paso4', label: 'Paso 4 – Título', ph: '👨‍👩‍👦 Datos del Tutor' },
-                                                            { key: 'form_desc_paso4', label: 'Paso 4 – Descripción', ph: 'Proporciona los datos...' },
-                                                            { key: 'form_titulo_paso5', label: 'Paso 5 – Título', ph: '✅ Confirmación de Datos' },
-                                                            { key: 'form_desc_paso5', label: 'Paso 5 – Descripción', ph: 'Revisa que todos tus datos...' },
-                                                        ].map((f) => (
-                                                            <div key={f.key} className="flex gap-2 items-center">
-                                                                <span className={`text-xs font-bold w-36 shrink-0 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{f.label}</span>
-                                                                <input type="text" value={preregConfig[f.key] || ''} onChange={(e) => setPreregConfig({ ...preregConfig, [f.key]: e.target.value })} className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder={f.ph} />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ STEPPER ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-teal-600 text-white rounded-lg">🔘 Stepper (Barra de Progreso)</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los pasos que se muestran en la barra de progreso del formulario</p>
-                                                    <div className="space-y-2">
-                                                        {(preregConfig.stepper_json || []).map((step, idx) => (
-                                                            <div key={idx} className={`p-2 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                                <input type="text" value={step.icon} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`w-12 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🎓" />
-                                                                <input type="text" value={step.label} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], label: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Nombre del paso" />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ PÁGINA DE ÉXITO ═══ */}
-                                                <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                    <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-lime-600 text-white rounded-lg">🎉 Página de Éxito</legend>
-                                                    <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el aspirante completa su pre-registro</p>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
-                                                            <input type="text" value={preregConfig.exito_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🎉" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
-                                                            <input type="text" value={preregConfig.exito_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Registro Exitoso!" />
-                                                        </div>
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
-                                                            <input type="text" value={preregConfig.exito_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_mensaje: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Tu pre-registro ha sido recibido..." />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón PDF</label>
-                                                            <input type="text" value={preregConfig.exito_btn_pdf || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_pdf: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📄 Descargar Ficha PDF" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón Inicio</label>
-                                                            <input type="text" value={preregConfig.exito_btn_inicio || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_inicio: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Inicio" />
-                                                        </div>
-                                                    </div>
-                                                </fieldset>
-
-                                                {/* ═══ BOTÓN GUARDAR ═══ */}
-                                                <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
-                                                    <button
-                                                        type="submit"
-                                                        disabled={preregConfigLoading}
-                                                        className="px-8 py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-200 hover:scale-[1.02] transition-all disabled:opacity-50"
-                                                    >
-                                                        {preregConfigLoading ? 'Guardando...' : '💾 Guardar Todos los Cambios'}
-                                                    </button>
-                                                </div>
-                                            </form>
+                                    {gmailStatus && (
+                                        <div className={`mt-4 p-4 rounded-2xl border ${gmailStatus.type === 'success'
+                                            ? (darkMode ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800')
+                                            : (darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border-red-200 text-red-700')
+                                            }`}>
+                                            {gmailStatus.message}
                                         </div>
-                                    ) : (
-                                        <>
-                                            {/* Filtros, Búsqueda y Descarga Excel */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                                <div className="relative md:col-span-2">
-                                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Buscar por nombre, folio o CURP..."
-                                                        value={preregSearch}
-                                                        onChange={(e) => setPreregSearch(e.target.value)}
-                                                        className={`w-full pl-10 pr-4 py-2 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
-                                                    <select
-                                                        value={preregFilterYear}
-                                                        onChange={(e) => setPreregFilterYear(e.target.value)}
-                                                        className={`w-full pl-10 pr-4 py-2 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
-                                                    >
-                                                        <option value="Todos">Todos los años</option>
-                                                        {getPreregAvailableYears().map(year => (
-                                                            <option key={year} value={year.toString()}>{year}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        onClick={exportPreregistrosExcel}
-                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-[1.02]"
-                                                    >
-                                                        <span className="material-symbols-outlined">table_view</span>
-                                                        <span>Descargar Excel</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Resumen filtrado */}
-                                            <div className={`flex items-center gap-3 mb-4 px-4 py-2 rounded-xl text-sm ${darkMode ? 'bg-slate-700/50 text-slate-300' : 'bg-blue-50 text-blue-700'}`}>
-                                                <span className="material-symbols-outlined text-sm">info</span>
-                                                <span>
-                                                    Mostrando <strong>{getFilteredPreregistros().length}</strong> de <strong>{preregistros.length}</strong> pre-registros
-                                                    {preregFilterYear !== 'Todos' && <> del año <strong>{preregFilterYear}</strong></>}
-                                                    {preregSearch && <> que coinciden con "<strong>{preregSearch}</strong>"</>}
-                                                </span>
-                                            </div>
-
-                                            {/* Tabla de Pre-Registros */}
-                                            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
-                                                <table className="w-full text-left border-collapse">
-                                                    <thead>
-                                                        <tr className={darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}>
-                                                            <th className="p-4 font-bold text-sm">Folio / Fecha</th>
-                                                            <th className="p-4 font-bold text-sm">Aspirante</th>
-                                                            <th className="p-4 font-bold text-sm">Carrera(s)</th>
-                                                            <th className="p-4 font-bold text-sm">Promedio</th>
-                                                            <th className="p-4 font-bold text-sm">Acciones</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {getFilteredPreregistros()
-                                                            .map(p => (
-                                                                <tr key={p.id} className={`border-t ${darkMode ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
-                                                                    <td className="p-4">
-                                                                        <div className="font-bold text-blue-600">{p.folio}</div>
-                                                                        <div className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</div>
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        <div className="font-semibold">{p.nombre} {p.apellido_paterno} {p.apellido_materno}</div>
-                                                                        <div className="text-xs text-slate-400">{p.curp}</div>
-                                                                    </td>
-                                                                    <td className="p-4 text-sm">
-                                                                        <div className="font-semibold">{p.carrera_nombre}</div>
-                                                                        {p.segunda_opcion_carrera && <div className="text-xs opacity-60">2ª: {p.segunda_opcion_carrera}</div>}
-                                                                        {p.tercera_opcion_carrera && <div className="text-xs opacity-50">3ª: {p.tercera_opcion_carrera}</div>}
-                                                                    </td>
-                                                                    <td className="p-4 font-bold text-center">{p.promedio_general}</td>
-                                                                    <td className="p-4 text-center">
-                                                                        <button
-                                                                            onClick={() => setSelectedPreregistro(p)}
-                                                                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 mx-auto"
-                                                                        >
-                                                                            <span className="material-symbols-outlined text-sm">visibility</span>
-                                                                            <span className="text-xs">Ver Ficha</span>
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        {getFilteredPreregistros().length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="5" className="p-10 text-center text-slate-400">
-                                                                    <div className="flex flex-col items-center gap-2">
-                                                                        <span className="material-symbols-outlined text-4xl opacity-30">search_off</span>
-                                                                        <span>No hay pre-registros {preregFilterYear !== 'Todos' ? `para el año ${preregFilterYear}` : ''} {preregSearch ? `que coincidan con "${preregSearch}"` : ''}</span>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </>
                                     )}
-                                </div>
-                            </section>
-                        )}
 
-                        {
-                            activeNav === 'access' && (
+                                    <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                                        {!gmailConnected && (
+                                            <button
+                                                type="button"
+                                                onClick={refreshGmailCredentials}
+                                                className="px-5 py-3 rounded-2xl bg-blue-800 text-white font-bold shadow hover:scale-[1.01] transition-all"
+                                            >
+                                                🔐 Conectar Gmail
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={checkGmailStatus}
+                                            disabled={gmailChecking}
+                                            className={`px-5 py-3 rounded-2xl font-semibold ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                        >
+                                            {gmailChecking ? 'Verificando...' : '🔄 Verificar conexión'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={sendGmailNotifications}
+                                            disabled={gmailSending || !gmailConnected}
+                                            className={`px-5 py-3 rounded-2xl font-bold ${gmailSending || !gmailConnected
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:scale-[1.01]'
+                                                } ${gmailConnected ? 'bg-green-600 text-white' : (darkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
+                                        >
+                                            {gmailSending ? '📨 Enviando...' : '📧 Enviar correo'}
+                                        </button>
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeNav === 'storage' && (
                                 <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                    <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-bold flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-orange-500">security</span> Acceso a la Página
+                                            <span className="material-symbols-outlined text-blue-800">storage</span> Almacenamiento
                                         </h3>
                                         <button
                                             type="button"
-                                            onClick={fetchAccessConfig}
+                                            onClick={fetchStorageUsage}
                                             className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}
                                         >
                                             Actualizar
                                         </button>
                                     </div>
 
-                                    <div className="space-y-6">
-                                        {/* Configuración Alumnos */}
-                                        <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
-                                            <h4 className="font-semibold flex items-center gap-2 mb-4">
-                                                <span className="material-symbols-outlined text-green-500">school</span>
-                                                Acceso de Alumnos
-                                            </h4>
-                                            <p className={`text-sm mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                Solo los correos con este dominio podrán acceder al portal de alumnos.
-                                            </p>
-                                            <div>
-                                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                    Dominio de correo permitido
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={accessConfig.alumno_domain}
-                                                    onChange={(e) => setAccessConfig({ ...accessConfig, alumno_domain: e.target.value })}
-                                                    className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
-                                                    placeholder="@cbta134.edu.mx"
-                                                />
-                                                <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    Ejemplo: @cbta134.edu.mx (incluir el @)
-                                                </p>
+                                    {storageLoading ? (
+                                        <p className="text-sm text-slate-500">Cargando...</p>
+                                    ) : storageUsage ? (
+                                        <>
+                                            <div className={`w-full h-5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                                {(() => {
+                                                    const total = storageUsage.total_bytes || 0;
+                                                    const db = storageUsage.db_bytes || 0;
+                                                    const storage = storageUsage.storage_bytes || 0;
+                                                    const dbPct = total ? Math.round((db / total) * 100) : 0;
+                                                    const storagePct = total ? 100 - dbPct : 0;
+                                                    return (
+                                                        <div className="w-full h-full flex">
+                                                            <div style={{ width: `${dbPct}%` }} className="h-full bg-blue-600" />
+                                                            <div style={{ width: `${storagePct}%` }} className="h-full bg-green-500" />
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
-                                        </div>
-
-                                        {/* Configuración Maestros */}
-                                        <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
-                                            <h4 className="font-semibold flex items-center gap-2 mb-4">
-                                                <span className="material-symbols-outlined text-blue-500">admin_panel_settings</span>
-                                                Acceso de Maestros
-                                            </h4>
-                                            <p className={`text-sm mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                Código de seguridad requerido después de iniciar sesión con Google.
-                                            </p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                        Usuario de seguridad
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={accessConfig.maestro_user}
-                                                        onChange={(e) => setAccessConfig({ ...accessConfig, maestro_user: e.target.value })}
-                                                        className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
-                                                        placeholder="cbta"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                        Contraseña de seguridad
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={accessConfig.maestro_password}
-                                                        onChange={(e) => setAccessConfig({ ...accessConfig, maestro_password: e.target.value })}
-                                                        className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
-                                                        placeholder="cbta134#pagina"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                Los maestros deberán ingresar estas credenciales después de iniciar sesión con Google.
-                                            </p>
-                                        </div>
-
-                                        {/* Botón Guardar */}
-                                        <div className="flex items-center gap-4">
-                                            <button
-                                                onClick={saveAccessConfig}
-                                                disabled={accessConfigLoading}
-                                                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                            >
-                                                {accessConfigLoading ? 'Guardando...' : 'Guardar Configuración'}
-                                            </button>
-                                            {accessConfigSaved && (
-                                                <span className="text-green-500 font-medium flex items-center gap-1">
-                                                    <span className="material-symbols-outlined">check_circle</span>
-                                                    Guardado correctamente
+                                            <div className="flex flex-wrap gap-4 text-sm mt-4">
+                                                <span className="flex items-center gap-2">
+                                                    <span className="w-3 h-3 rounded-full bg-blue-600" />
+                                                    BD: {formatBytes(storageUsage.db_bytes)}
                                                 </span>
-                                            )}
-                                        </div>
+                                                <span className="flex items-center gap-2">
+                                                    <span className="w-3 h-3 rounded-full bg-green-500" />
+                                                    Storage: {formatBytes(storageUsage.storage_bytes)}
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    Total: {formatBytes(storageUsage.total_bytes)}
+                                                </span>
+                                            </div>
 
-                                        {/* Cuentas Permitidas del EduPanel - Solo visible para cuenta maestra */}
-                                        {isMasterAccount && (
-                                            <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
-                                                <h4 className="font-semibold flex items-center gap-2 mb-4">
-                                                    <span className="material-symbols-outlined text-purple-500">group_add</span>
-                                                    Cuentas Permitidas del EduPanel
-                                                </h4>
-                                                <p className={`text-sm mb-4 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                    Solo las cuentas en esta lista pueden acceder al panel administrativo.
-                                                </p>
-
-                                                {/* Agregar nueva cuenta */}
-                                                <div className="flex gap-2 mb-4">
-                                                    <input
-                                                        type="email"
-                                                        value={newAllowedEmail}
-                                                        onChange={(e) => setNewAllowedEmail(e.target.value)}
-                                                        className={`flex-1 px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
-                                                        placeholder="correo@ejemplo.com"
-                                                    />
-                                                    <button
-                                                        onClick={addAllowedAccount}
-                                                        disabled={addingAccount || !newAllowedEmail.trim()}
-                                                        className="px-4 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-                                                    >
-                                                        {addingAccount ? '...' : 'Agregar'}
-                                                    </button>
-                                                </div>
-
-                                                {/* Lista de cuentas */}
-                                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                                    {allowedAccounts.map((account) => (
-                                                        <div
-                                                            key={account.id}
-                                                            className={`flex items-center justify-between p-3 rounded-xl ${darkMode ? 'bg-slate-800' : 'bg-white'} border ${darkMode ? 'border-slate-700' : 'border-slate-200'}`}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-slate-400">
-                                                                    {account.is_master ? 'verified_user' : 'person'}
-                                                                </span>
-                                                                <div>
-                                                                    <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                                                                        {account.email}
-                                                                    </p>
-                                                                    {account.is_master && (
-                                                                        <span className="text-xs text-purple-500 font-medium">Cuenta Maestra</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                <button
-                                                                    onClick={() => toggleMasterStatus(account.id, account.email, account.is_master)}
-                                                                    className={`p-2 rounded-lg transition-colors ${account.is_master
-                                                                        ? 'text-amber-500 hover:bg-amber-50'
-                                                                        : 'text-purple-500 hover:bg-purple-50'
-                                                                        }`}
-                                                                    title={account.is_master ? 'Quitar rol de maestra' : 'Hacer cuenta maestra'}
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">
-                                                                        {account.is_master ? 'remove_moderator' : 'add_moderator'}
-                                                                    </span>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => removeAllowedAccount(account.id, account.email, account.is_master)}
-                                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                                    title="Eliminar cuenta"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                                                </button>
+                                            {storageUsage.buckets?.length > 0 && (
+                                                <div className="space-y-2 mt-4">
+                                                    <h5 className="text-sm font-semibold">Buckets</h5>
+                                                    {storageUsage.buckets.map((bucket) => (
+                                                        <div key={bucket.bucket_id} className={`p-3 rounded-xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-100 bg-white'}`}>
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span>{bucket.bucket_id}</span>
+                                                                <span>{formatBytes(bucket.size_bytes)}</span>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    {allowedAccounts.length === 0 && (
-                                                        <p className={`text-sm text-center py-4 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                            No hay cuentas configuradas.
-                                                        </p>
-                                                    )}
                                                 </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">Sin datos de almacenamiento.</p>
+                                    )}
+                                </section>
+                            )}
+
+                            {activeNav === 'preregistros' && (
+                                <section className="space-y-6">
+                                    <div className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                            <div>
+                                                <h3 className="text-xl font-bold flex items-center gap-2 text-blue-600">
+                                                    <span className="material-symbols-outlined">assignment_ind</span> Pre-Registros de Nuevo Ingreso
+                                                </h3>
+                                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    Gestiona las solicitudes de aspirantes para el ciclo escolar 2025-2026.
+                                                </p>
                                             </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={fetchPreregistros} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                                    <span className="material-symbols-outlined">refresh</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowPreregConfig(!showPreregConfig)}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showPreregConfig ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                                >
+                                                    <span className="material-symbols-outlined">{showPreregConfig ? 'visibility' : 'settings'}</span>
+                                                    <span className="font-bold">{showPreregConfig ? 'Ver Registros' : 'Configurar Módulo'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {showPreregConfig ? (
+                                            <div className="space-y-6">
+                                                {/* ═══ ESTADO DEL MÓDULO ═══ */}
+                                                <div className={`p-5 rounded-3xl border ${preregConfig.habilitado ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${preregConfig.habilitado ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                                                <span className="material-symbols-outlined">{preregConfig.habilitado ? 'check_circle' : 'cancel'}</span>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold">Estatus del Módulo</h4>
+                                                                <p className="text-xs opacity-70">Si se desactiva, la landing muestra "Convocatoria Cerrada"</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setPreregConfig({ ...preregConfig, habilitado: !preregConfig.habilitado })}
+                                                            className={`px-5 py-2 rounded-xl font-bold text-sm transition-all ${preregConfig.habilitado ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
+                                                        >
+                                                            {preregConfig.habilitado ? 'Desactivar' : 'Activar'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <form onSubmit={handleSavePreregistroConfig} className="space-y-6">
+
+                                                    {/* ═══ HERO / ENCABEZADO ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-600 text-white rounded-lg">🏠 Hero / Encabezado</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge (insignia superior)</label>
+                                                                <input type="text" value={preregConfig.badge_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, badge_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📋 Convocatoria Abierta · Ciclo 2025–2026" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título principal</label>
+                                                                <input type="text" value={preregConfig.titulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, titulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
+                                                                <input type="text" value={preregConfig.subtitulo_header || ''} onChange={(e) => setPreregConfig({ ...preregConfig, subtitulo_header: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón CTA</label>
+                                                                <input type="text" value={preregConfig.cta_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Ahora!" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón CTA</label>
+                                                                <input type="text" value={preregConfig.cta_subtexto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_subtexto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Es rápido, gratuito y 100% en línea" />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ VIGENCIA / COUNTDOWN ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-orange-500 text-white rounded-lg">⏰ Vigencia</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Fecha de cierre</label>
+                                                                <input type="date" value={preregConfig.fecha_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, fecha_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del contador</label>
+                                                                <input type="text" value={preregConfig.mensaje_cierre || ''} onChange={(e) => setPreregConfig({ ...preregConfig, mensaje_cierre: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Cierre de convocatoria en:" />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ TARJETA PRINCIPAL ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-green-600 text-white rounded-lg">📋 Tarjeta Principal</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de la tarjeta</label>
+                                                                <input type="text" value={preregConfig.card_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Regístrate" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
+                                                                <input type="text" value={preregConfig.card_boton_texto || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_boton_texto: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Iniciar Pre-Registro →" />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
+                                                                <textarea value={preregConfig.card_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, card_descripcion: e.target.value })} rows={3} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Checklist (un ítem por línea)</label>
+                                                                <textarea
+                                                                    value={Array.isArray(preregConfig.card_checklist_json) ? preregConfig.card_checklist_json.join('\n') : ''}
+                                                                    onChange={(e) => setPreregConfig({ ...preregConfig, card_checklist_json: e.target.value.split('\n').filter(l => l.trim()) })}
+                                                                    rows={5} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                                                    placeholder="Datos personales y de contacto&#10;Elección de carrera técnica&#10;etc."
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ PASOS ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-purple-600 text-white rounded-lg">🔢 Sección Pasos</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                                                                <input type="text" value={preregConfig.pasos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Cómo funciona?" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                                                                <input type="text" value={preregConfig.pasos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, pasos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-4 space-y-3">
+                                                            <label className="text-xs font-bold opacity-60 block">Pasos (agrega/edita)</label>
+                                                            {(preregConfig.pasos_json || []).map((paso, idx) => (
+                                                                <div key={idx} className={`p-3 rounded-xl border flex flex-col md:flex-row gap-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                                                    <input type="text" value={paso.num} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], num: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`w-16 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="#" />
+                                                                    <input type="text" value={paso.titulo} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], titulo: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Título del paso" />
+                                                                    <input type="text" value={paso.desc} onChange={(e) => { const arr = [...preregConfig.pasos_json]; arr[idx] = { ...arr[idx], desc: e.target.value }; setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Descripción" />
+                                                                    <button type="button" onClick={() => { const arr = preregConfig.pasos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, pasos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
+                                                                </div>
+                                                            ))}
+                                                            <button type="button" onClick={() => setPreregConfig({ ...preregConfig, pasos_json: [...(preregConfig.pasos_json || []), { num: String((preregConfig.pasos_json?.length || 0) + 1).padStart(2, '0'), titulo: '', desc: '' }] })} className="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 font-bold text-sm hover:bg-purple-200 transition-colors">+ Agregar Paso</button>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ CARRERAS ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-cyan-600 text-white rounded-lg">🎓 Sección Carreras</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                                                                <input type="text" value={preregConfig.carreras_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Carreras Técnicas Disponibles" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                                                                <input type="text" value={preregConfig.carreras_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, carreras_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                        </div>
+                                                        <p className={`mt-3 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>💡 Las carreras se gestionan desde la sección "Carreras" del panel principal.</p>
+                                                    </fieldset>
+
+                                                    {/* ═══ REQUISITOS ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-amber-500 text-white rounded-lg">📋 Sección Requisitos</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título de sección</label>
+                                                                <input type="text" value={preregConfig.requisitos_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo de sección</label>
+                                                                <input type="text" value={preregConfig.requisitos_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, requisitos_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-4 space-y-3">
+                                                            <label className="text-xs font-bold opacity-60 block">Requisitos (agrega/edita)</label>
+                                                            {(preregConfig.requisitos_json || []).map((req, idx) => (
+                                                                <div key={idx} className={`p-3 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                                                    <input type="text" value={req.icon} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`w-14 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🪪" />
+                                                                    <input type="text" value={req.txt} onChange={(e) => { const arr = [...preregConfig.requisitos_json]; arr[idx] = { ...arr[idx], txt: e.target.value }; setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Texto del requisito" />
+                                                                    <button type="button" onClick={() => { const arr = preregConfig.requisitos_json.filter((_, i) => i !== idx); setPreregConfig({ ...preregConfig, requisitos_json: arr }); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-sm">delete</span></button>
+                                                                </div>
+                                                            ))}
+                                                            <button type="button" onClick={() => setPreregConfig({ ...preregConfig, requisitos_json: [...(preregConfig.requisitos_json || []), { icon: '📌', txt: '' }] })} className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 font-bold text-sm hover:bg-amber-200 transition-colors">+ Agregar Requisito</button>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ CTA FINAL ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-lg">🚀 CTA Final</legend>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                                                                <input type="text" value={preregConfig.cta_final_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¿Listo para unirte al CBTa 134?" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo</label>
+                                                                <input type="text" value={preregConfig.cta_final_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón</label>
+                                                                <input type="text" value={preregConfig.cta_final_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Comenzar Pre-Registro" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtexto del botón</label>
+                                                                <input type="text" value={preregConfig.cta_final_boton_sub || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cta_final_boton_sub: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Formulario en línea · Ficha PDF inmediata" />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ CONVOCATORIA CERRADA ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-red-50 bg-red-50/30'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-600 text-white rounded-lg">🚫 Página Cerrada</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el módulo está desactivado</p>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
+                                                                <input type="text" value={preregConfig.cerrada_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🚫 Convocatoria Cerrada" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                                                                <input type="text" value={preregConfig.cerrada_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="El proceso de pre-registro ha finalizado" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
+                                                                <textarea value={preregConfig.cerrada_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, cerrada_mensaje: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ FORMULARIO ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white rounded-lg">📝 Formulario</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran en el formulario de pre-registro</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge del formulario</label>
+                                                                <input type="text" value={preregConfig.form_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Nuevo Ingreso 2025–2026" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título del formulario</label>
+                                                                <input type="text" value={preregConfig.form_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Pre-Registro de Aspirantes" />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Subtítulo del formulario</label>
+                                                                <input type="text" value={preregConfig.form_subtitulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, form_subtitulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Indicaciones en la Ficha PDF</label>
+                                                                <input type="text" value={preregConfig.indicaciones_ficha || ''} onChange={(e) => setPreregConfig({ ...preregConfig, indicaciones_ficha: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Acude con tu ficha impresa en las fechas indicadas." />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ TARJETA PÁGINA PRINCIPAL ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-pink-600 text-white rounded-lg">🏠 Tarjeta en Página Principal</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>La tarjeta que aparece en la página de inicio cuando el módulo está activo</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Badge</label>
+                                                                <input type="text" value={preregConfig.home_badge || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_badge: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="NUEVO INGRESO 2025" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
+                                                                <input type="text" value={preregConfig.home_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📝" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                                                                <input type="text" value={preregConfig.home_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Regístrate Hoy!" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del Botón</label>
+                                                                <input type="text" value={preregConfig.home_boton || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_boton: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Pre-Registro →" />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Descripción</label>
+                                                                <textarea value={preregConfig.home_descripcion || ''} onChange={(e) => setPreregConfig({ ...preregConfig, home_descripcion: e.target.value })} rows={2} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ TÍTULOS DE SECCIONES DEL FORMULARIO ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-violet-600 text-white rounded-lg">📑 Títulos de Pasos del Formulario</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los títulos y emojis de cada sección del formulario. Puedes incluir emojis al inicio.</p>
+                                                        <div className="space-y-3">
+                                                            {[
+                                                                { key: 'form_titulo_paso1', label: 'Paso 1 – Título', ph: '👤 Datos del Aspirante' },
+                                                                { key: 'form_titulo_paso2', label: 'Paso 2 – Título', ph: '🎓 Carrera Técnica' },
+                                                                { key: 'form_desc_paso2', label: 'Paso 2 – Descripción', ph: 'Selecciona la carrera...' },
+                                                                { key: 'form_titulo_paso3', label: 'Paso 3 – Título', ph: '🏫 Escuela de Procedencia' },
+                                                                { key: 'form_desc_paso3', label: 'Paso 3 – Descripción', ph: 'Proporciona los datos...' },
+                                                                { key: 'form_titulo_paso4', label: 'Paso 4 – Título', ph: '👨‍👩‍👦 Datos del Tutor' },
+                                                                { key: 'form_desc_paso4', label: 'Paso 4 – Descripción', ph: 'Proporciona los datos...' },
+                                                                { key: 'form_titulo_paso5', label: 'Paso 5 – Título', ph: '✅ Confirmación de Datos' },
+                                                                { key: 'form_desc_paso5', label: 'Paso 5 – Descripción', ph: 'Revisa que todos tus datos...' },
+                                                            ].map((f) => (
+                                                                <div key={f.key} className="flex gap-2 items-center">
+                                                                    <span className={`text-xs font-bold w-36 shrink-0 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{f.label}</span>
+                                                                    <input type="text" value={preregConfig[f.key] || ''} onChange={(e) => setPreregConfig({ ...preregConfig, [f.key]: e.target.value })} className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder={f.ph} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ STEPPER ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-teal-600 text-white rounded-lg">🔘 Stepper (Barra de Progreso)</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Los pasos que se muestran en la barra de progreso del formulario</p>
+                                                        <div className="space-y-2">
+                                                            {(preregConfig.stepper_json || []).map((step, idx) => (
+                                                                <div key={idx} className={`p-2 rounded-xl border flex gap-2 items-center ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                                                    <input type="text" value={step.icon} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], icon: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`w-12 p-2 text-center rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="🎓" />
+                                                                    <input type="text" value={step.label} onChange={(e) => { const arr = [...(preregConfig.stepper_json || [])]; arr[idx] = { ...arr[idx], label: e.target.value }; setPreregConfig({ ...preregConfig, stepper_json: arr }); }} className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-600 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Nombre del paso" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ PÁGINA DE ÉXITO ═══ */}
+                                                    <fieldset className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                        <legend className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-lime-600 text-white rounded-lg">🎉 Página de Éxito</legend>
+                                                        <p className={`text-xs mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Textos que se muestran cuando el aspirante completa su pre-registro</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Ícono / Emoji</label>
+                                                                <input type="text" value={preregConfig.exito_icono || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_icono: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="🎉" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Título</label>
+                                                                <input type="text" value={preregConfig.exito_titulo || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_titulo: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="¡Pre-Registro Exitoso!" />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Mensaje</label>
+                                                                <input type="text" value={preregConfig.exito_mensaje || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_mensaje: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Tu pre-registro ha sido recibido..." />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón PDF</label>
+                                                                <input type="text" value={preregConfig.exito_btn_pdf || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_pdf: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="📄 Descargar Ficha PDF" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-bold opacity-60 mb-1 block">Texto del botón Inicio</label>
+                                                                <input type="text" value={preregConfig.exito_btn_inicio || ''} onChange={(e) => setPreregConfig({ ...preregConfig, exito_btn_inicio: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`} placeholder="Ir al Inicio" />
+                                                            </div>
+                                                        </div>
+                                                    </fieldset>
+
+                                                    {/* ═══ BOTÓN GUARDAR ═══ */}
+                                                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
+                                                        <button
+                                                            type="submit"
+                                                            disabled={preregConfigLoading}
+                                                            className="px-8 py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-200 hover:scale-[1.02] transition-all disabled:opacity-50"
+                                                        >
+                                                            {preregConfigLoading ? 'Guardando...' : '💾 Guardar Todos los Cambios'}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Filtros, Búsqueda y Descarga Excel */}
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                                    <div className="relative md:col-span-2">
+                                                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Buscar por nombre, folio o CURP..."
+                                                            value={preregSearch}
+                                                            onChange={(e) => setPreregSearch(e.target.value)}
+                                                            className={`w-full pl-10 pr-4 py-2 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                        />
+                                                    </div>
+                                                    <div className="relative">
+                                                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
+                                                        <select
+                                                            value={preregFilterYear}
+                                                            onChange={(e) => setPreregFilterYear(e.target.value)}
+                                                            className={`w-full pl-10 pr-4 py-2 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                        >
+                                                            <option value="Todos">Todos los años</option>
+                                                            {getPreregAvailableYears().map(year => (
+                                                                <option key={year} value={year.toString()}>{year}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            onClick={exportPreregistrosExcel}
+                                                            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-[1.02]"
+                                                        >
+                                                            <span className="material-symbols-outlined">table_view</span>
+                                                            <span>Descargar Excel</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Resumen filtrado */}
+                                                <div className={`flex items-center gap-3 mb-4 px-4 py-2 rounded-xl text-sm ${darkMode ? 'bg-slate-700/50 text-slate-300' : 'bg-blue-50 text-blue-700'}`}>
+                                                    <span className="material-symbols-outlined text-sm">info</span>
+                                                    <span>
+                                                        Mostrando <strong>{getFilteredPreregistros().length}</strong> de <strong>{preregistros.length}</strong> pre-registros
+                                                        {preregFilterYear !== 'Todos' && <> del año <strong>{preregFilterYear}</strong></>}
+                                                        {preregSearch && <> que coinciden con "<strong>{preregSearch}</strong>"</>}
+                                                    </span>
+                                                </div>
+
+                                                {/* Tabla de Pre-Registros */}
+                                                <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className={darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}>
+                                                                <th className="p-4 font-bold text-sm">Folio / Fecha</th>
+                                                                <th className="p-4 font-bold text-sm">Aspirante</th>
+                                                                <th className="p-4 font-bold text-sm">Carrera(s)</th>
+                                                                <th className="p-4 font-bold text-sm">Promedio</th>
+                                                                <th className="p-4 font-bold text-sm">Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {getFilteredPreregistros()
+                                                                .map(p => (
+                                                                    <tr key={p.id} className={`border-t ${darkMode ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
+                                                                        <td className="p-4">
+                                                                            <div className="font-bold text-blue-600">{p.folio}</div>
+                                                                            <div className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</div>
+                                                                        </td>
+                                                                        <td className="p-4">
+                                                                            <div className="font-semibold">{p.nombre} {p.apellido_paterno} {p.apellido_materno}</div>
+                                                                            <div className="text-xs text-slate-400">{p.curp}</div>
+                                                                        </td>
+                                                                        <td className="p-4 text-sm">
+                                                                            <div className="font-semibold">{p.carrera_nombre}</div>
+                                                                            {p.segunda_opcion_carrera && <div className="text-xs opacity-60">2ª: {p.segunda_opcion_carrera}</div>}
+                                                                            {p.tercera_opcion_carrera && <div className="text-xs opacity-50">3ª: {p.tercera_opcion_carrera}</div>}
+                                                                        </td>
+                                                                        <td className="p-4 font-bold text-center">{p.promedio_general}</td>
+                                                                        <td className="p-4 text-center">
+                                                                            <button
+                                                                                onClick={() => setSelectedPreregistro(p)}
+                                                                                className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 mx-auto"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-sm">visibility</span>
+                                                                                <span className="text-xs">Ver Ficha</span>
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            {getFilteredPreregistros().length === 0 && (
+                                                                <tr>
+                                                                    <td colSpan="5" className="p-10 text-center text-slate-400">
+                                                                        <div className="flex flex-col items-center gap-2">
+                                                                            <span className="material-symbols-outlined text-4xl opacity-30">search_off</span>
+                                                                            <span>No hay pre-registros {preregFilterYear !== 'Todos' ? `para el año ${preregFilterYear}` : ''} {preregSearch ? `que coincidan con "${preregSearch}"` : ''}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                 </section>
-                            )
-                        }
-                    </div >
-                )
+                            )}
+
+                            {
+                                activeNav === 'access' && (
+                                    <section className={`rounded-[2rem] p-6 md:p-8 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-orange-500">security</span> Acceso a la Página
+                                            </h3>
+                                            <button
+                                                type="button"
+                                                onClick={fetchAccessConfig}
+                                                className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}
+                                            >
+                                                Actualizar
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            {/* Configuración Alumnos */}
+                                            <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
+                                                <h4 className="font-semibold flex items-center gap-2 mb-4">
+                                                    <span className="material-symbols-outlined text-green-500">school</span>
+                                                    Acceso de Alumnos
+                                                </h4>
+                                                <p className={`text-sm mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                    Solo los correos con este dominio podrán acceder al portal de alumnos.
+                                                </p>
+                                                <div>
+                                                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                        Dominio de correo permitido
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={accessConfig.alumno_domain}
+                                                        onChange={(e) => setAccessConfig({ ...accessConfig, alumno_domain: e.target.value })}
+                                                        className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                                                        placeholder="@cbta134.edu.mx"
+                                                    />
+                                                    <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                        Ejemplo: @cbta134.edu.mx (incluir el @)
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Configuración Maestros */}
+                                            <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
+                                                <h4 className="font-semibold flex items-center gap-2 mb-4">
+                                                    <span className="material-symbols-outlined text-blue-500">admin_panel_settings</span>
+                                                    Acceso de Maestros
+                                                </h4>
+                                                <p className={`text-sm mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                    Código de seguridad requerido después de iniciar sesión con Google.
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                            Usuario de seguridad
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={accessConfig.maestro_user}
+                                                            onChange={(e) => setAccessConfig({ ...accessConfig, maestro_user: e.target.value })}
+                                                            className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                                                            placeholder="cbta"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                            Contraseña de seguridad
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={accessConfig.maestro_password}
+                                                            onChange={(e) => setAccessConfig({ ...accessConfig, maestro_password: e.target.value })}
+                                                            className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                                                            placeholder="cbta134#pagina"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    Los maestros deberán ingresar estas credenciales después de iniciar sesión con Google.
+                                                </p>
+                                            </div>
+
+                                            {/* Botón Guardar */}
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={saveAccessConfig}
+                                                    disabled={accessConfigLoading}
+                                                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                                >
+                                                    {accessConfigLoading ? 'Guardando...' : 'Guardar Configuración'}
+                                                </button>
+                                                {accessConfigSaved && (
+                                                    <span className="text-green-500 font-medium flex items-center gap-1">
+                                                        <span className="material-symbols-outlined">check_circle</span>
+                                                        Guardado correctamente
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Cuentas Permitidas del EduPanel - Solo visible para cuenta maestra */}
+                                            {isMasterAccount && (
+                                                <div className={`p-5 rounded-2xl border ${darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
+                                                    <h4 className="font-semibold flex items-center gap-2 mb-4">
+                                                        <span className="material-symbols-outlined text-purple-500">group_add</span>
+                                                        Cuentas Permitidas del EduPanel
+                                                    </h4>
+                                                    <p className={`text-sm mb-4 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                        Solo las cuentas en esta lista pueden acceder al panel administrativo.
+                                                    </p>
+
+                                                    {/* Agregar nueva cuenta */}
+                                                    <div className="flex gap-2 mb-4">
+                                                        <input
+                                                            type="email"
+                                                            value={newAllowedEmail}
+                                                            onChange={(e) => setNewAllowedEmail(e.target.value)}
+                                                            className={`flex-1 px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                                                            placeholder="correo@ejemplo.com"
+                                                        />
+                                                        <button
+                                                            onClick={addAllowedAccount}
+                                                            disabled={addingAccount || !newAllowedEmail.trim()}
+                                                            className="px-4 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {addingAccount ? '...' : 'Agregar'}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Lista de cuentas */}
+                                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                        {allowedAccounts.map((account) => (
+                                                            <div
+                                                                key={account.id}
+                                                                className={`flex items-center justify-between p-3 rounded-xl ${darkMode ? 'bg-slate-800' : 'bg-white'} border ${darkMode ? 'border-slate-700' : 'border-slate-200'}`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="material-symbols-outlined text-slate-400">
+                                                                        {account.is_master ? 'verified_user' : 'person'}
+                                                                    </span>
+                                                                    <div>
+                                                                        <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                                            {account.email}
+                                                                        </p>
+                                                                        {account.is_master && (
+                                                                            <span className="text-xs text-purple-500 font-medium">Cuenta Maestra</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button
+                                                                        onClick={() => toggleMasterStatus(account.id, account.email, account.is_master)}
+                                                                        className={`p-2 rounded-lg transition-colors ${account.is_master
+                                                                            ? 'text-amber-500 hover:bg-amber-50'
+                                                                            : 'text-purple-500 hover:bg-purple-50'
+                                                                            }`}
+                                                                        title={account.is_master ? 'Quitar rol de maestra' : 'Hacer cuenta maestra'}
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-sm">
+                                                                            {account.is_master ? 'remove_moderator' : 'add_moderator'}
+                                                                        </span>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => removeAllowedAccount(account.id, account.email, account.is_master)}
+                                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                        title="Eliminar cuenta"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-sm">delete</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {allowedAccounts.length === 0 && (
+                                                            <p className={`text-sm text-center py-4 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                No hay cuentas configuradas.
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                )
+                            }
+                        </div >
+                    )
                 }
             </main >
 

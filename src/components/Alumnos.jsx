@@ -223,9 +223,9 @@ const Alumnos = () => {
                                 <p style={{ color: '#666', marginBottom: '10px' }}>
                                     Solo se permiten cuentas con el dominio:
                                 </p>
-                                <p style={{ 
-                                    fontWeight: 'bold', 
-                                    color: '#2ecc71', 
+                                <p style={{
+                                    fontWeight: 'bold',
+                                    color: '#2ecc71',
                                     fontSize: '18px',
                                     background: '#f0fff4',
                                     padding: '10px 20px',
@@ -238,7 +238,7 @@ const Alumnos = () => {
                                 <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>
                                     Tu correo: <strong>{user?.email}</strong>
                                 </p>
-                                <button 
+                                <button
                                     onClick={handleLogout}
                                     style={{
                                         background: '#e74c3c',
