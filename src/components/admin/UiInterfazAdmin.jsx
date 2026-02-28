@@ -849,6 +849,168 @@ function FooterSection({ darkMode, uiFooterForm, setUiFooterForm, handleSaveUiFo
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Sub-componente: Gestión BAETAM
+// ─────────────────────────────────────────────────────────────────────────────
+function BaetamSection({ darkMode }) {
+    const [config, setConfig] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const dk = darkMode;
+    const input = `p-3 rounded-xl border text-sm ${dk ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200'} w-full focus:ring-2 focus:ring-blue-500 outline-none transition`;
+    const cardWrapper = `rounded-[2rem] p-6 md:p-8 border ${dk ? 'bg-slate-800 border-slate-700' : 'bg-white border-white shadow-slate-200/50 shadow-xl'}`;
+
+    useEffect(() => {
+        fetchBaetam();
+    }, []);
+
+    const fetchBaetam = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase.from('baetam_config').select('*').order('created_at', { ascending: false }).limit(1).single();
+            if (data) setConfig(data);
+            if (error) console.error("Error fetching baetam:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!config) return;
+        setSaving(true);
+        const { error } = await supabase.from('baetam_config').update({
+            hero_image_url: config.hero_image_url,
+            title: config.title,
+            subtitle: config.subtitle,
+            target_date: config.target_date,
+            countdown_date_text: config.countdown_date_text,
+            inscriptions_title: config.inscriptions_title,
+            updated_at: new Date().toISOString()
+        }).eq('id', config.id);
+
+        if (error) alert('Error al guardar: ' + error.message);
+        else alert('✅ Configuración de BAETAM actualizada correctamente.');
+        setSaving(false);
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `baetam-hero-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('ui_media').upload(fileName, file, { upsert: true });
+
+        if (uploadError) {
+            alert('Error subiendo: ' + uploadError.message);
+            setUploading(false);
+            return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage.from('ui_media').getPublicUrl(fileName);
+        setConfig({ ...config, hero_image_url: publicUrl });
+        setUploading(false);
+    };
+
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+            <span className="material-symbols-outlined animate-spin text-4xl mb-3">sync</span>
+            <p className="font-bold">Cargando BAETAM...</p>
+        </div>
+    );
+
+    if (!config) return (
+        <div className="p-10 text-center text-red-500 font-bold border-2 border-dashed rounded-3xl">
+            ❌ No se encontró la fila de configuración en baetam_config.
+        </div>
+    );
+
+    return (
+        <div className="space-y-6 animate-fadeIn">
+            <section className={cardWrapper}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                            <span className="material-symbols-outlined text-3xl">school</span>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold">Imagen y Contenido de BAETAM</h3>
+                            <p className="text-sm text-slate-400">Modifica la información visual que ven los aspirantes de educación autoplaneada.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <span className="material-symbols-outlined">{saving ? 'sync' : 'save'}</span>
+                        {saving ? 'Guardando...' : 'Publicar cambios'}
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Vista Previa del Hero</label>
+                        <div className="relative group rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 aspect-[21/9]">
+                            <img src={config.hero_image_url} alt="BAETAM Hero" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 pointer-events-none">
+                                <h4 className="text-white font-black text-2xl uppercase italic">{config.title}</h4>
+                                <p className="text-white/80 text-sm max-w-sm line-clamp-2">{config.subtitle}</p>
+                            </div>
+                            <div className="absolute inset-0 bg-purple-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                <label className="cursor-pointer bg-white text-purple-700 px-6 py-3 rounded-2xl text-sm font-black shadow-2xl transform transition hover:scale-105 active:scale-95">
+                                    {uploading ? '⏳ SUBIENDO...' : '🖼️ CAMBIAR IMAGEN'}
+                                    <input type="file" onChange={handleFileChange} className="hidden" accept="image/*" disabled={uploading} />
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <input type="text" value={config.hero_image_url} onChange={e => setConfig({ ...config, hero_image_url: e.target.value })} className={input} placeholder="URL de la imagen..." />
+                        </div>
+                        <p className="text-[10px] text-slate-400 px-1">Recomendado: 1920x800px. También puedes subirla directamente pasando el mouse sobre la previa.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Título de Cabecera</label>
+                                <input type="text" value={config.title} onChange={e => setConfig({ ...config, title: e.target.value })} className={input} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Subtítulo Descriptivo</label>
+                                <textarea value={config.subtitle} onChange={e => setConfig({ ...config, subtitle: e.target.value })} className={input} rows={2} />
+                            </div>
+                        </div>
+
+                        <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 mt-2">
+                            <h4 className="font-bold text-sm mb-4 flex items-center gap-2 text-orange-600">
+                                <span className="material-symbols-outlined text-base">event</span>
+                                Sección de Inscripciones
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Título de la sección</label>
+                                    <input type="text" value={config.inscriptions_title} onChange={e => setConfig({ ...config, inscriptions_title: e.target.value })} className={input} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Fecha para Cuenta Regresiva</label>
+                                    <input type="datetime-local" value={config.target_date?.split('.')[0]} onChange={e => setConfig({ ...config, target_date: e.target.value })} className={input} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Texto Informativo de Fecha</label>
+                                    <input type="text" value={config.countdown_date_text} onChange={e => setConfig({ ...config, countdown_date_text: e.target.value })} className={input} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 const UiInterfazAdmin = ({
@@ -1049,6 +1211,7 @@ const UiInterfazAdmin = ({
     const tabs = [
         { id: 'tarjetas', label: 'Tarjetas Inicio', icon: 'grid_view' },
         { id: 'carrusel', label: 'Carrusel', icon: 'slideshow' },
+        { id: 'baetam', label: 'BAETAM', icon: 'school' },
         { id: 'header', label: 'Header', icon: 'web_asset' },
         { id: 'footer', label: 'Footer', icon: 'bottom_navigation' },
     ];
@@ -1219,6 +1382,11 @@ const UiInterfazAdmin = ({
             {/* ═══ TAB: Carrusel ═══════════════════════════════════════════════════ */}
             {activeTab === 'carrusel' && (
                 <CarruselSection darkMode={dk} />
+            )}
+
+            {/* ═══ TAB: BAETAM ═══════════════════════════════════════════════════ */}
+            {activeTab === 'baetam' && (
+                <BaetamSection darkMode={dk} />
             )}
 
             {/* ═══ TAB: Header ═══════════════════════════════════════════════════ */}
