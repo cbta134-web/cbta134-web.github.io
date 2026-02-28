@@ -856,6 +856,7 @@ function BaetamSection({ darkMode }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [seeding, setSeeding] = useState(false);
 
     const dk = darkMode;
     const input = `p-3 rounded-xl border text-sm ${dk ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200'} w-full focus:ring-2 focus:ring-blue-500 outline-none transition`;
@@ -868,11 +869,83 @@ function BaetamSection({ darkMode }) {
     const fetchBaetam = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase.from('baetam_config').select('*').order('created_at', { ascending: false }).limit(1).single();
-            if (data) setConfig(data);
+            const { data, error } = await supabase.from('baetam_config').select('*').order('created_at', { ascending: false }).limit(1);
+            if (data && data.length > 0) setConfig(data[0]);
+            else setConfig(null);
             if (error) console.error("Error fetching baetam:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSeedBaetamData = async () => {
+        if (!window.confirm('¿Quieres cargar la información REAL de CBTA 134 Tlaxcala para BAETAM? Esto actualizará la configuración y las pestañas informativas.')) return;
+        setSeeding(true);
+        try {
+            // 1. Configuración base
+            const baetamData = {
+                hero_image_url: 'https://images.unsplash.com/photo-1523050853063-bd80e29247c6?q=80&w=2070',
+                title: 'BAETAM CBTA 134',
+                subtitle: 'Bachillerato Autoplaneado de Educación Tecnológica Agropecuaria y del Mar - Plantel Tlaxcala',
+                target_date: '2026-08-15T08:00:00',
+                countdown_label: '⏰ Próximo ciclo de inscripciones:',
+                countdown_date_text: '🗓️ Agosto 2026',
+                inscriptions_title: 'Unidad de Educación Autoplaneada',
+                inscriptions_period_title: '📝 Inscripciones Sabatinas',
+                inscriptions_period_description: 'Proceso abierto para mayores de 18 años. Obtén tu certificado oficial de bachillerato estudiando solo los sábados.',
+                requirements_title: 'Documentación para Ingreso',
+                advantages_title: '¿Por qué elegir nuestra modalidad?',
+                contact_title: 'Atención a Estudiantes',
+                contact_description: 'Visítanos en nuestras oficinas para una atención personalizada.'
+            };
+
+            const { data: existing } = await supabase.from('baetam_config').select('id').limit(1);
+            if (existing && existing.length > 0) {
+                await supabase.from('baetam_config').update(baetamData).eq('id', existing[0].id);
+            } else {
+                await supabase.from('baetam_config').insert([baetamData]);
+            }
+
+            // 2. Info Cards (Limpia e inserta)
+            await supabase.from('baetam_info_cards').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_info_cards').insert([
+                { title: 'Educación para Adultos', description: 'Programa bivalente diseñado para personas trabajadoras mayores de 18 años.', order_index: 1 },
+                { title: 'Estudio Sabatino', description: 'Asistencia presencial únicamente los sábados en horario flexible de 8:00 AM a 3:00 PM.', order_index: 2 },
+                { title: 'Título Técnico', description: 'Obtén certificado de bachillerato y título técnico profesional en Ofimática o Agropecuario.', order_index: 3 }
+            ]);
+
+            // 3. Requisitos
+            await supabase.from('baetam_requirements').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_requirements').insert([
+                { icon: '📄', text: 'Acta de Nacimiento (Original y 3 copias)', order_index: 1 },
+                { icon: '🎓', text: 'Certificado de Secundaria original', order_index: 2 },
+                { icon: '🆔', text: 'CURP actualizado (Formato reciente)', order_index: 3 },
+                { icon: '📸', text: '6 Fotografías tamaño infantil (B/N)', order_index: 4 },
+                { icon: '🏠', text: 'Comprobante de domicilio vigente', order_index: 5 }
+            ]);
+
+            // 4. Ventajas
+            await supabase.from('baetam_advantages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_advantages').insert([
+                { title: 'Sin límite de edad', description: 'Nunca es tarde para concluir tus metas académicas. Recibimos alumnos de todas las edades.', order_index: 1 },
+                { title: 'Validez Nacional', description: 'Certificado oficial emitido por la SEP con validez para ingresar a cualquier universidad.', order_index: 2 },
+                { title: 'Cédula Profesional', description: 'Tratamiento profesional para tu carrera técnica con registro ante la Dirección General de Profesiones.', order_index: 3 }
+            ]);
+
+            // 5. Contacto
+            await supabase.from('baetam_contact_lines').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('baetam_contact_lines').insert([
+                { line_text: '📍 Ubicación: San Francisco Tetlanohcan, Tlaxcala.', order_index: 1 },
+                { line_text: '📞 Teléfono Oficina: (246) 464 5678', order_index: 2 },
+                { line_text: '📧 Correo: baetam.tlaxcala@cbta134.edu.mx', order_index: 3 }
+            ]);
+
+            alert('✅ Datos de Tlaxcala cargados con éxito.');
+            await fetchBaetam();
+        } catch (err) {
+            alert('Error cargando datos: ' + err.message);
+        } finally {
+            setSeeding(false);
         }
     };
 
@@ -939,36 +1012,66 @@ function BaetamSection({ darkMode }) {
                             <p className="text-sm text-slate-400">Modifica la información visual que ven los aspirantes de educación autoplaneada.</p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <span className="material-symbols-outlined">{saving ? 'sync' : 'save'}</span>
-                        {saving ? 'Guardando...' : 'Publicar cambios'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleSeedBaetamData}
+                            disabled={seeding}
+                            className={`px-4 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 ${dk ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                        >
+                            <span className="material-symbols-outlined text-base">database</span>
+                            {seeding ? 'Cargando...' : 'Cargar Datos Tlaxcala'}
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <span className="material-symbols-outlined">{saving ? 'sync' : 'save'}</span>
+                            {saving ? 'Guardando...' : 'Publicar cambios'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Vista Previa del Hero</label>
-                        <div className="relative group rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 aspect-[21/9]">
-                            <img src={config.hero_image_url} alt="BAETAM Hero" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 pointer-events-none">
-                                <h4 className="text-white font-black text-2xl uppercase italic">{config.title}</h4>
-                                <p className="text-white/80 text-sm max-w-sm line-clamp-2">{config.subtitle}</p>
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Imagen de Cabecera (Hero)</label>
+                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase">Dynamic</span>
+                        </div>
+
+                        {/* Zona de carga visual mejorada */}
+                        <div className={`relative group rounded-3xl overflow-hidden shadow-2xl border-4 ${dk ? 'border-slate-700' : 'border-white'} aspect-[16/8] bg-slate-100`}>
+                            <img src={config.hero_image_url} alt="BAETAM Hero" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+
+                            {/* Overlay de Carga siempre visible pero discreto o potente al hover */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                                <label className="cursor-pointer bg-white text-purple-700 px-6 py-3 rounded-2xl text-sm font-black shadow-2xl hover:scale-105 active:scale-95 transition flex items-center gap-2">
+                                    <span className="material-symbols-outlined">upload_file</span>
+                                    {uploading ? 'SUBIENDO...' : 'SUBIR IMAGEN'}
+                                    <input type="file" onChange={handleFileChange} className="hidden" accept="image/*" disabled={uploading} />
+                                </label>
+                                <p className="text-white text-[10px] font-bold uppercase tracking-widest drop-shadow-md">JPG, PNG o WEBP</p>
                             </div>
-                            <div className="absolute inset-0 bg-purple-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                <label className="cursor-pointer bg-white text-purple-700 px-6 py-3 rounded-2xl text-sm font-black shadow-2xl transform transition hover:scale-105 active:scale-95">
-                                    {uploading ? '⏳ SUBIENDO...' : '🖼️ CAMBIAR IMAGEN'}
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex items-center gap-3 mb-3">
+                                <span className="material-symbols-outlined text-blue-600">link</span>
+                                <span className="text-xs font-bold text-blue-700 uppercase">Input manual o Archivo</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <div className="md:col-span-2">
+                                    <input type="text" value={config.hero_image_url} onChange={e => setConfig({ ...config, hero_image_url: e.target.value })}
+                                        className={`${input} !bg-white dark:!bg-slate-950`} placeholder="O pega una URL externa aquí..." />
+                                </div>
+                                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 p-2 px-4 shadow-md">
+                                    <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
+                                    {uploading ? 'Subiendo...' : 'Importar'}
                                     <input type="file" onChange={handleFileChange} className="hidden" accept="image/*" disabled={uploading} />
                                 </label>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <input type="text" value={config.hero_image_url} onChange={e => setConfig({ ...config, hero_image_url: e.target.value })} className={input} placeholder="URL de la imagen..." />
-                        </div>
-                        <p className="text-[10px] text-slate-400 px-1">Recomendado: 1920x800px. También puedes subirla directamente pasando el mouse sobre la previa.</p>
+                        <p className="text-[10px] text-slate-400 px-1 italic">Nota: Para mejores resultados, usa imágenes horizontales de alta resolución.</p>
                     </div>
 
                     <div className="space-y-4">
